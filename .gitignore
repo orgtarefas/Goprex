@@ -1,41 +1,52 @@
-# Android Studio / Gradle
+# Android Studio / IntelliJ
+
 .gradle/
-**/build/
-build/
 .idea/
 *.iml
 *.iws
 *.ipr
 out/
+
+# Local machine configuration
+
 local.properties
 
-# Firebase
-google-services.json
+# Build outputs
 
-# Android
+build/
+**/build/
+
+# Android generated files
+
 *.apk
 *.aab
 *.dex
 *.class
 
-# Native
+# Native build
+
 .externalNativeBuild/
 .cxx/
 
 # Logs
+
 *.log
 
-# Sistema
+# Kotlin
+
+*.kotlin_module
+
+# Captures
+
+captures/
+
+# System files
+
 .DS_Store
 Thumbs.db
 
-# Kotlin
-*.kotlin_module
+# Temporary files
 
-# Capturas
-captures/
-
-# Temporários
 *.swp
 *.swo
 *~
