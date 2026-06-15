@@ -1,41 +1,41 @@
 # Android Studio / Gradle
 .gradle/
+**/build/
 build/
+.idea/
 *.iml
 *.iws
 *.ipr
-.idea/
 out/
 local.properties
-
-# Arquivos específicos do Android
-*.apk
-*.aab
-*.dex
-*.class
-bin/
-gen/
-obj/
 
 # Firebase
 google-services.json
 
-# Arquivos do sistema
+# Android
+*.apk
+*.aab
+*.dex
+*.class
+
+# Native
+.externalNativeBuild/
+.cxx/
+
+# Logs
+*.log
+
+# Sistema
 .DS_Store
 Thumbs.db
 
 # Kotlin
 *.kotlin_module
 
-# Logs
-*.log
-
-# Diretórios de build
+# Capturas
 captures/
-.externalNativeBuild/
-.cxx/
 
-# Arquivos temporários
+# Temporários
 *.swp
 *.swo
 *~
