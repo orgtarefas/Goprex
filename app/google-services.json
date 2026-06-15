@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "14316768740",
+    "project_id": "goprex-fdc72",
+    "storage_bucket": "goprex-fdc72.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:14316768740:android:53f025a73220392b7a0bf1",
+        "android_client_info": {
+          "package_name": "com.goprex"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOU2i-wB2f3JOwe8elPwpLw3jKlMxmrsI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
