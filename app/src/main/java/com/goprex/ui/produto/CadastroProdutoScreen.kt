@@ -75,6 +75,7 @@ fun CadastroProdutoScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Card: Informações do Produto
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -165,6 +166,7 @@ fun CadastroProdutoScreen(
                 }
             }
 
+            // Card: Imagens
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -242,6 +244,7 @@ fun CadastroProdutoScreen(
                 }
             }
 
+            // Card: Erro
             if (uiState.error != null) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -258,12 +261,13 @@ fun CadastroProdutoScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Botão Salvar
             Button(
                 onClick = {
                     viewModel.salvarProduto(
                         vendedorLogin = loginData.documentoId,
-                        cidade = loginData.cidade,
-                        estado = loginData.estado,
+                        cidade = loginData.getString("cidade"),
+                        estado = loginData.getString("estado"),
                         context = context
                     )
                 },
@@ -290,6 +294,7 @@ fun CadastroProdutoScreen(
         }
     }
 
+    // Dialog de sucesso
     if (uiState.isSuccess) {
         AlertDialog(
             onDismissRequest = { viewModel.clearSuccess(); onBack() },
