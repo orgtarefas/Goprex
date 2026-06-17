@@ -22,12 +22,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Verifica se já está logado
         val sharedPrefs = getSharedPreferences("goprex_prefs", Context.MODE_PRIVATE)
         val logado = sharedPrefs.getBoolean("logado", false)
 
         if (logado) {
-            // Já logado - vai direto para home
             startActivity(Intent(this, tela_home_meus_dados::class.java))
             finish()
             return
@@ -36,13 +34,18 @@ class MainActivity : ComponentActivity() {
         setContent {
             GoprexTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
+                    var navegou by remember { mutableStateOf(false) }
+
                     LoginScreen(
                         onLoginSuccess = { login ->
-                            // Salva todos os dados no SharedPreferences
-                            salvarDadosLogin(login)
-                            // Vai para a tela home
-                            startActivity(Intent(this, tela_home_meus_dados::class.java))
-                            finish()
+                            if (!navegou) {
+                                navegou = true
+                                salvarDadosLogin(login)
+                                val intent = Intent(this@MainActivity, tela_home_meus_dados::class.java)
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                startActivity(intent)
+                                finish()
+                            }
                         }
                     )
                 }
@@ -55,8 +58,6 @@ class MainActivity : ComponentActivity() {
         sharedPrefs.edit().apply {
             putBoolean("logado", true)
             putString("documentoId", login.documentoId)
-
-            // Salva todos os campos do mapa de dados
             login.getDados().forEach { (chave, valor) ->
                 when (valor) {
                     is String -> putString(chave, valor)
