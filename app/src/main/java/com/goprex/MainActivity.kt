@@ -36,24 +36,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             GoprexTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    var telaAtual by remember { mutableStateOf("LOGIN") }
-                    var loginKey by remember { mutableStateOf(0) }
-
-                    when (telaAtual) {
-                        "LOGIN" -> {
-                            key(loginKey) {
-                                LoginScreen(
-                                    onLoginSuccess = { login ->
-                                        // Salva dados no SharedPreferences
-                                        salvarDadosLogin(login)
-                                        // Vai para a Activity home
-                                        startActivity(Intent(this@MainActivity, tela_home_meus_dados::class.java))
-                                        finish()
-                                    }
-                                )
-                            }
+                    LoginScreen(
+                        onLoginSuccess = { login ->
+                            // Salva todos os dados no SharedPreferences
+                            salvarDadosLogin(login)
+                            // Vai para a tela home
+                            startActivity(Intent(this, tela_home_meus_dados::class.java))
+                            finish()
                         }
-                    }
+                    )
                 }
             }
         }
@@ -65,7 +56,7 @@ class MainActivity : ComponentActivity() {
             putBoolean("logado", true)
             putString("documentoId", login.documentoId)
 
-            // Salva campos comuns de forma genérica
+            // Salva todos os campos do mapa de dados
             login.getDados().forEach { (chave, valor) ->
                 when (valor) {
                     is String -> putString(chave, valor)
@@ -73,7 +64,7 @@ class MainActivity : ComponentActivity() {
                     is Int -> putInt(chave, valor)
                     is Boolean -> putBoolean(chave, valor)
                     is Float -> putFloat(chave, valor)
-                    // Mapas e listas não salvamos no SharedPreferences
+                    is Double -> putFloat(chave, valor.toFloat())
                 }
             }
             apply()
