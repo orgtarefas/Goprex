@@ -2,7 +2,9 @@ package com.goprex.ui.menu
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -19,6 +21,11 @@ fun ModalSuporteDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Fechar")
+            }
+        },
         title = {
             Text(
                 text = "Suporte Goprex",
@@ -36,19 +43,6 @@ fun ModalSuporteDialog(
                         "Segunda a Sexta: 08h às 18h\n" +
                         "Sábado: 08h às 12h"
             )
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val intent = Intent(Intent.ACTION_DIAL).apply {
-                        data = Uri.parse("tel:11999999999")
-                    }
-                    context.startActivity(intent)
-                    onDismiss()
-                }
-            ) {
-                Text("Ligar")
-            }
         },
         dismissButton = {
             TextButton(
@@ -72,21 +66,6 @@ fun ModalSuporteDialog(
                 }
             ) {
                 Text("WhatsApp")
-            }
-        },
-        neutralButton = {
-            TextButton(
-                onClick = {
-                    val intent = Intent(Intent.ACTION_SENDTO).apply {
-                        data = Uri.parse("mailto:")
-                        putExtra(Intent.EXTRA_EMAIL, arrayOf("suporte@goprex.com"))
-                        putExtra(Intent.EXTRA_SUBJECT, "Suporte Goprex")
-                    }
-                    context.startActivity(intent)
-                    onDismiss()
-                }
-            ) {
-                Text("Email")
             }
         }
     )
