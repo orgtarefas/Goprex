@@ -1,0 +1,29 @@
+package com.goprex.ui.telas
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.goprex.ui.theme.GoprexTheme
+
+class tela_gestao_compras : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            GoprexTheme {
+                Scaffold { padding ->
+                    Box(
+                        modifier = Modifier.fillMaxSize().padding(padding),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Gestão de Compras")
+                    }
+                }
+            }
+        }
+    }
+}

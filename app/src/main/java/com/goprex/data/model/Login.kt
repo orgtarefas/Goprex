@@ -2,23 +2,11 @@ package com.goprex.data.model
 
 data class Login(
     val documentoId: String = "",
-    val nome: String = "",
-    val cidade: String = "Salvador",
-    val estado: String = "Bahia",
-    val data_criacao: String = "",
-    val perfil: Perfil = Perfil.CLIENTE,
-    val loja: String = "",
-    val regiao_abrangencia: Map<String, Boolean> = mapOf("Salvador" to true),
-    val status_ativo: Boolean = true,
-    val telefone: Long = 0,
-    val telefone_whatsapp: Boolean = false,
-    val email: String = "",
-    val fotoUrl: String = ""
-)
-
-enum class Perfil {
-    CLIENTE,
-    VENDEDOR,
-    ENTREGADOR,
-    ADMIN
+    private val dados: Map<String, Any?> = emptyMap()
+) {
+    fun getString(campo: String): String = dados[campo]?.toString() ?: ""
+    fun getLong(campo: String): Long = (dados[campo] as? Number)?.toLong() ?: 0L
+    fun getBoolean(campo: String): Boolean = dados[campo] as? Boolean ?: false
+    fun getMap(campo: String): Map<String, Any?>? = dados[campo] as? Map<String, Any?>
+    fun getDados(): Map<String, Any?> = dados
 }
