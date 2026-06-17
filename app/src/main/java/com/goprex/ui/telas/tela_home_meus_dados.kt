@@ -58,28 +58,27 @@ class tela_home_meus_dados : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val sharedPrefs = getSharedPreferences("goprex_prefs", Context.MODE_PRIVATE)
+
+        // Verifica se está logado
+        if (!sharedPrefs.getBoolean("logado", false)) {
+            startActivity(Intent(this, com.goprex.MainActivity::class.java))
+            finish()
+            return
+        }
+
         val documentoId = sharedPrefs.getString("documentoId", "") ?: ""
-        val nome = sharedPrefs.getString("nome", "") ?: ""
-        val perfil = sharedPrefs.getString("perfil", "") ?: ""
-        val descricaoPerfil = sharedPrefs.getString("descricaoPerfil", perfil) ?: perfil
-        val cidade = sharedPrefs.getString("cidade", "") ?: ""
-        val estado = sharedPrefs.getString("estado", "") ?: ""
-        val loja = sharedPrefs.getString("loja", "") ?: ""
-        val telefone = sharedPrefs.getLong("telefone", 0L)
-        val fotoUrl = sharedPrefs.getString("fotoUrl", "") ?: ""
+
+        // Cria mapa com TODOS os dados salvos
+        val dadosMap = mutableMapOf<String, Any?>()
+        sharedPrefs.all.forEach { (chave, valor) ->
+            if (chave != "logado" && chave != "documentoId") {
+                dadosMap[chave] = valor
+            }
+        }
 
         val loginData = Login(
             documentoId = documentoId,
-            dados = mapOf(
-                "nome" to nome,
-                "perfil" to perfil,
-                "descricaoPerfil" to descricaoPerfil,
-                "cidade" to cidade,
-                "estado" to estado,
-                "loja" to loja,
-                "telefone" to telefone,
-                "fotoUrl" to fotoUrl
-            )
+            dados = dadosMap
         )
 
         setContent {
@@ -88,8 +87,10 @@ class tela_home_meus_dados : ComponentActivity() {
                     loginData = loginData,
                     onLogout = {
                         sharedPrefs.edit().clear().apply()
-                        finishAffinity()
-                        startActivity(Intent(this, tela_home_meus_dados::class.java))
+                        val intent = Intent(this, com.goprex.MainActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        startActivity(intent)
+                        finish()
                     }
                 )
             }
