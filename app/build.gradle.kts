@@ -66,6 +66,9 @@ dependencies {
     // ViewModel Compose
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 
+    // Material Icons Extended (para ter todos os ícones)
+    implementation("androidx.compose.material:material-icons-extended")
+
     // Splash Screen API
     implementation("androidx.core:core-splashscreen:1.0.1")
 
