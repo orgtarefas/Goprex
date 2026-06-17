@@ -2,6 +2,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Permissões -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+
+    <!-- Hardware features -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -10,7 +23,10 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Goprex">
+        android:theme="@style/Theme.Goprex"
+        tools:targetApi="31">
+
+        <!-- MainActivity (Login) -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -18,10 +34,33 @@
             android:theme="@style/Theme.Goprex">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Tela Home -->
+        <activity android:name=".ui.telas.tela_home_meus_dados" />
+
+        <!-- Telas Admin -->
+        <activity android:name=".ui.telas.tela_gestao_cadastros" />
+        <activity android:name=".ui.telas.tela_gestao_compras" />
+        <activity android:name=".ui.telas.tela_gestao_entregas" />
+        <activity android:name=".ui.telas.tela_gestao_vendas" />
+        <activity android:name=".ui.telas.tela_sistema_pagamento" />
+
+        <!-- Telas Cliente -->
+        <activity android:name=".ui.telas.tela_comprar" />
+        <activity android:name=".ui.telas.tela_minhas_compras" />
+
+        <!-- Telas Entregador -->
+        <activity android:name=".ui.telas.tela_minhas_entregas" />
+        <activity android:name=".ui.telas.tela_relatorios_entregas" />
+
+        <!-- Telas Vendedor -->
+        <activity android:name=".ui.telas.tela_cadastrar_produtos" />
+        <activity android:name=".ui.telas.tela_vendas" />
+        <activity android:name=".ui.telas.tela_relatorio_vendas" />
+
     </application>
 
 </manifest>
