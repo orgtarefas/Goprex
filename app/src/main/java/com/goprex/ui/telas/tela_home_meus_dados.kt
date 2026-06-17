@@ -1,5 +1,6 @@
 package com.goprex.ui.telas
 
+import android.os.Bundle
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -196,7 +197,7 @@ fun TelaHomeMeusDados(
             "tela" -> {
                 try {
                     val nomeClasse = item.rota
-                    if (nomeClasse.contains("tela_home_meus_dados")) return@launch
+                    if (nomeClasse.contains("tela_home_meus_dados")) return
                     val intent = Intent()
                     intent.setClassName(context, "${context.packageName}.ui.telas.$nomeClasse")
                     context.startActivity(intent)
