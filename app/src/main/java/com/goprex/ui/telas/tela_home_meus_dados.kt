@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -59,19 +58,24 @@ class tela_home_meus_dados : ComponentActivity() {
 
         val sharedPrefs = getSharedPreferences("goprex_prefs", Context.MODE_PRIVATE)
 
-        // Verifica se está logado
+        // Se não estiver logado, volta para o login
         if (!sharedPrefs.getBoolean("logado", false)) {
-            startActivity(Intent(this, com.goprex.MainActivity::class.java))
+            val intent = Intent(this, com.goprex.MainActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
             finish()
             return
         }
 
         val documentoId = sharedPrefs.getString("documentoId", "") ?: ""
 
-        // Cria mapa com TODOS os dados salvos
+        // Pega TODOS os dados salvos
         val dadosMap = mutableMapOf<String, Any?>()
-        sharedPrefs.all.forEach { (chave, valor) ->
-            if (chave != "logado" && chave != "documentoId") {
+        val todasChaves = sharedPrefs.all
+        for ((chave, valor) in todasChaves) {
+            if (chave != "logado" && chave != "documentoId" &&
+                chave != "saved_login" && chave != "saved_password" &&
+                chave != "lembrar_dados" && chave != "acabou_de_sair") {
                 dadosMap[chave] = valor
             }
         }
@@ -114,7 +118,7 @@ fun TelaHomeMeusDados(
     val dados = loginData.getDados()
     val nome = remember { dados["nome"]?.toString() ?: "" }
     val perfil = remember { dados["perfil"]?.toString() ?: "" }
-    val descricaoPerfil = remember { dados["descricaoPerfil"]?.toString() ?: perfil }
+    val descricaoPerfil = remember { dados["descricaoPerfil"]?.toString() ?: perfil.ifEmpty { "Usuário" } }
     val cidade = remember { dados["cidade"]?.toString() ?: "" }
     val estado = remember { dados["estado"]?.toString() ?: "" }
     val loja = remember { dados["loja"]?.toString() ?: "" }
@@ -203,7 +207,7 @@ fun TelaHomeMeusDados(
                     intent.setClassName(context, "${context.packageName}.ui.telas.$nomeClasse")
                     context.startActivity(intent)
                 } catch (e: Exception) {
-                    Log.e("TelaHome", "Erro ao abrir tela: ${item.rota}", e)
+                    // Se não conseguir abrir, mostra mensagem
                 }
             }
             "modal" -> {
@@ -238,7 +242,7 @@ fun TelaHomeMeusDados(
                                 AsyncImage(model = fotoUrl, contentDescription = "Avatar", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                             } else {
                                 Text(
-                                    nome.split(" ").take(2).map { it.firstOrNull()?.toString() ?: "" }.joinToString("").uppercase(),
+                                    nome.split(" ").take(2).map { it.firstOrNull()?.toString() ?: "" }.joinToString("").uppercase().ifEmpty { "?" },
                                     fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White
                                 )
                             }
@@ -247,7 +251,7 @@ fun TelaHomeMeusDados(
                         Text(if (isUploadingAvatar) "Enviando..." else "Toque para alterar", color = TextSecondary, fontSize = 10.sp)
                         if (avatarError != null) Text(avatarError!!, color = Color.Red, fontSize = 10.sp)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(nome, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(nome.ifEmpty { "Usuário" }, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         Text(descricaoPerfil, color = TextSecondary, fontSize = 14.sp)
                         if (cidade.isNotEmpty() || estado.isNotEmpty()) {
                             Text(
@@ -331,7 +335,7 @@ fun TelaHomeMeusDados(
                     ) {
                         Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("Olá, ${nome.split(" ").firstOrNull() ?: ""}!", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                                Text("Olá, ${nome.split(" ").firstOrNull() ?: "Usuário"}!", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text("Bem-vindo à GoPrex", color = TextSecondary, fontSize = 14.sp)
                             }
