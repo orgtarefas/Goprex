@@ -58,6 +58,7 @@
 
         <!-- Telas Vendedor -->
         <activity android:name=".ui.telas.tela_cadastrar_produtos" />
+        <activity android:name=".ui.telas.tela_meus_produtos" />
         <activity android:name=".ui.telas.tela_vendas" />
         <activity android:name=".ui.telas.tela_relatorio_vendas" />
 

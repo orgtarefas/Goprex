@@ -14,7 +14,6 @@ import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 
-// Estados específicos para cada etapa do processo
 sealed class CadastroState {
     object Idle : CadastroState()
     object PreparandoImagens : CadastroState()
@@ -31,10 +30,10 @@ data class ProdutoUiState(
     val categoria: String = "",
     val quantidade: String = "1",
     val imagensUris: List<Uri> = emptyList(),
-    val imagensRemovidas: List<String> = emptyList(), // Para edição
+    val imagensRemovidas: List<String> = emptyList(),
     val estadoCadastro: CadastroState = CadastroState.Idle,
     val camposValidados: Map<String, Boolean> = emptyMap(),
-    val produtoEditando: String? = null // ID do produto se for edição
+    val produtoEditando: String? = null
 )
 
 class ProdutoViewModel : ViewModel() {
@@ -44,14 +43,12 @@ class ProdutoViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(ProdutoUiState())
     val uiState: StateFlow<ProdutoUiState> = _uiState.asStateFlow()
 
-    // Getters computados para facilitar acesso
     val isLoading: Boolean get() = _uiState.value.estadoCadastro !is CadastroState.Idle &&
             _uiState.value.estadoCadastro !is CadastroState.Erro &&
             _uiState.value.estadoCadastro !is CadastroState.Sucesso
     val isSuccess: Boolean get() = _uiState.value.estadoCadastro is CadastroState.Sucesso
     val error: String? get() = (_uiState.value.estadoCadastro as? CadastroState.Erro)?.mensagem
 
-    // Estados individuais para UI
     val progressoUpload: Pair<Int, Int>? get() {
         val state = _uiState.value.estadoCadastro
         return if (state is CadastroState.EnviandoImagens) {
@@ -136,12 +133,12 @@ class ProdutoViewModel : ViewModel() {
         )
     }
 
-    // Carregar produto para edição
-    fun carregarProdutoParaEdicao(produtoId: String) {
+    // Carregar produto para edição - CORRIGIDO: adicionado nomeLoja
+    fun carregarProdutoParaEdicao(nomeLoja: String, produtoId: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(estadoCadastro = CadastroState.PreparandoImagens)
 
-            val result = produtoRepository.buscarProdutoPorId(produtoId)
+            val result = produtoRepository.buscarProdutoPorId(nomeLoja, produtoId)
             result.fold(
                 onSuccess = { produto ->
                     produto?.let {
@@ -150,7 +147,7 @@ class ProdutoViewModel : ViewModel() {
                             descricao = it.descricao,
                             preco = it.preco.toString(),
                             categoria = it.categoria,
-                            quantidade = "1", // Ou buscar do estoque
+                            quantidade = "1",
                             produtoEditando = produtoId,
                             estadoCadastro = CadastroState.Idle
                         )
@@ -170,7 +167,7 @@ class ProdutoViewModel : ViewModel() {
             val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
             val byteArrayOutputStream = ByteArrayOutputStream()
             inputStream?.use { input ->
-                val buffer = ByteArray(8192) // Buffer maior para performance
+                val buffer = ByteArray(8192)
                 var bytesRead: Int
                 while (input.read(buffer).also { bytesRead = it } != -1) {
                     byteArrayOutputStream.write(buffer, 0, bytesRead)
@@ -197,13 +194,14 @@ class ProdutoViewModel : ViewModel() {
         return erros
     }
 
+    // CORRIGIDO: adicionado parâmetro nomeLoja
     fun salvarProduto(
         vendedorLogin: String,
         cidade: String,
         estado: String,
+        nomeLoja: String,  // ← NOVO PARÂMETRO
         context: Context
     ) {
-        // Validação
         val erros = validarFormulario()
         if (erros.isNotEmpty()) {
             _uiState.value = _uiState.value.copy(
@@ -233,7 +231,7 @@ class ProdutoViewModel : ViewModel() {
                     return@launch
                 }
 
-                // Etapa 2: Upload das imagens com progresso
+                // Etapa 2: Upload das imagens
                 val nomeBase = buildString {
                     append("produto_")
                     append(state.titulo.take(30)
@@ -284,7 +282,11 @@ class ProdutoViewModel : ViewModel() {
                     dataCriacao = System.currentTimeMillis()
                 )
 
-                val resultSalvar = produtoRepository.salvarProduto(produto)
+                // CORRIGIDO: passando nomeLoja
+                val resultSalvar = produtoRepository.salvarProduto(
+                    produto = produto,
+                    nomeLoja = nomeLoja
+                )
 
                 resultSalvar.fold(
                     onSuccess = {

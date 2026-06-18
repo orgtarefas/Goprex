@@ -464,6 +464,7 @@ fun CadastroProdutoScreen(
                     vendedorLogin = loginData.documentoId,
                     cidade = loginData.getString("cidade"),
                     estado = loginData.getString("estado"),
+                    nomeLoja = loginData.getString("loja"),
                     context = context
                 )
             },
