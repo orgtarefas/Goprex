@@ -3,7 +3,6 @@ package com.goprex.ui.produto
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,7 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -45,6 +43,9 @@ import java.io.InputStream
 import java.text.NumberFormat
 import java.util.Locale
 
+// Cor dourada para estrela de promoção
+val GoldColor = Color(0xFFFFD700)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MeusProdutosScreen(
@@ -53,6 +54,9 @@ fun MeusProdutosScreen(
     onEditarProduto: (String) -> Unit = {},
     viewModel: MeusProdutosViewModel = viewModel()
 ) {
+
+    var produtoEditando by remember { mutableStateOf<Produto?>(null) }
+    var showEdicaoModal by remember { mutableStateOf(false) }
     val uiState by viewModel.uiState.collectAsState()
     val nomeLoja = loginData.getString("loja")
     val context = LocalContext.current
@@ -195,7 +199,10 @@ fun MeusProdutosScreen(
                             produto = produto,
                             onToggleDisponibilidade = { viewModel.toggleDisponibilidade(nomeLoja, produto) },
                             onTogglePromocao = { viewModel.togglePromocao(nomeLoja, produto) },
-                            onEditar = { onEditarProduto(produto.id) },
+                            onEditar = {
+                                produtoEditando = produto
+                                showEdicaoModal = true
+                            },
                             onDesativar = { viewModel.selecionarProduto(produto) },
                             onVerDetalhes = { produtoDetalhe = produto },
                             onAtualizarPromocao = { desconto, dataFim ->
@@ -223,14 +230,31 @@ fun MeusProdutosScreen(
             title = { Text("Desativar Produto") },
             text = { Text("Deseja realmente desativar \"${uiState.produtoSelecionado?.titulo}\"?") },
             confirmButton = {
-                Button(
-                    onClick = { viewModel.desativarProduto(nomeLoja, uiState.produtoSelecionado!!.id) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-                ) { Text(if (uiState.isDeleting) "..." else "Desativar") }
+                Button(onClick = { viewModel.desativarProduto(nomeLoja, uiState.produtoSelecionado!!.id) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)) {
+                    Text(if (uiState.isDeleting) "..." else "Desativar")
+                }
             },
             dismissButton = { TextButton(onClick = { viewModel.selecionarProduto(null) }) { Text("Cancelar") } }
         )
     }
+    // Modal de Edição do Produto
+    if (showEdicaoModal && produtoEditando != null) {
+        EditarProdutoModal(
+            produto = produtoEditando!!,
+            loginData = loginData,
+            onDismiss = {
+                showEdicaoModal = false
+                produtoEditando = null
+            },
+            onProdutoAtualizado = {
+                showEdicaoModal = false
+                produtoEditando = null
+                viewModel.carregarProdutos(nomeLoja) // Recarregar lista
+            }
+        )
+    }
+
 }
 
 // ============ DIALOG DETALHES ============
@@ -249,6 +273,7 @@ fun ProdutoDetalheDialog(produto: Produto, onDismiss: () -> Unit, onEditar: () -
                     }
                 }
 
+                // Preço
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (produto.emPromocao && produto.precoPromocional != null && produto.precoPromocional > 0) {
                         Text(numberFormat.format(produto.preco), fontSize = 16.sp, color = Color.Gray, textDecoration = TextDecoration.LineThrough)
@@ -261,27 +286,36 @@ fun ProdutoDetalheDialog(produto: Produto, onDismiss: () -> Unit, onEditar: () -
                     }
                 }
 
-                // Flags com Bookmark
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Surface(color = if (produto.disponivel) SuccessGreen.copy(alpha = 0.1f) else Color.Red.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
-                        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                if (produto.disponivel) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                                null,
-                                tint = if (produto.disponivel) SuccessGreen else Color.Red,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(if (produto.disponivel) "Disponível" else "Indisponível", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (produto.disponivel) SuccessGreen else Color.Red)
-                        }
+                // Status com Switch e Estrela
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // Switch de disponibilidade
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(
+                            checked = produto.disponivel,
+                            onCheckedChange = { },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = SuccessGreen,
+                                uncheckedThumbColor = Color.White,
+                                uncheckedTrackColor = Color.Red.copy(alpha = 0.5f)
+                            ),
+                            modifier = Modifier.height(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            if (produto.disponivel) "Disponível" else "Indisponível",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (produto.disponivel) SuccessGreen else Color.Red
+                        )
                     }
+
+                    // Estrela de promoção
                     if (produto.emPromocao) {
-                        Surface(color = Color.Red.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
-                            Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Filled.Bookmark, null, tint = Color.Red, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Em Promoção", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.Red)
-                            }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Star, null, tint = GoldColor, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Em Promoção", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = GoldColor)
                         }
                     }
                 }
@@ -334,6 +368,7 @@ fun ProdutoCard(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Imagem
                 Box(modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)).background(Color.Gray.copy(alpha = 0.2f))) {
                     if (produto.imagens.isNotEmpty()) {
                         Image(painter = rememberAsyncImagePainter(produto.imagens.first()), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -342,10 +377,12 @@ fun ProdutoCard(
                     }
                 }
 
+                // Informações
                 Column(modifier = Modifier.weight(1f)) {
                     Text(produto.titulo, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (produto.disponivel) GoPrexDark else Color.Gray)
                     Spacer(modifier = Modifier.height(4.dp))
 
+                    // Preço
                     if (produto.emPromocao && produto.precoPromocional != null && produto.precoPromocional > 0) {
                         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(numberFormat.format(produto.preco), fontSize = 12.sp, color = Color.Gray, textDecoration = TextDecoration.LineThrough)
@@ -356,44 +393,57 @@ fun ProdutoCard(
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+
+                    // Tags
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (produto.categoria.isNotEmpty()) {
                             Surface(color = GoPrexOrange.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
                                 Text(produto.categoria, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), fontSize = 11.sp, color = GoPrexOrange)
                             }
                         }
                         if (produto.emPromocao) {
-                            Surface(color = Color.Red.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
-                                Text("-${produto.porcentagemDesconto}%", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Red)
-                            }
+                            Icon(Icons.Filled.Star, null, tint = GoldColor, modifier = Modifier.size(16.dp))
+                            Text("-${produto.porcentagemDesconto}%", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Red)
                         }
+                    }
+
+                    // Descrição
+                    if (produto.descricao.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(produto.descricao, fontSize = 12.sp, color = Color.Gray, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
 
-                // Ações com Bookmark
+                // Ações
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    // Disponibilidade
-                    IconButton(onClick = onToggleDisponibilidade, modifier = Modifier.size(34.dp)) {
-                        Icon(
-                            if (produto.disponivel) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                            contentDescription = "Disponibilidade",
-                            tint = if (produto.disponivel) SuccessGreen else Color.Gray,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    // Promoção
+                    // Switch Disponibilidade
+                    Switch(
+                        checked = produto.disponivel,
+                        onCheckedChange = { onToggleDisponibilidade() },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = SuccessGreen,
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = Color.Red.copy(alpha = 0.5f)
+                        ),
+                        modifier = Modifier.height(24.dp)
+                    )
+
+                    // Estrela Promoção
                     IconButton(onClick = { showPromoDialog = true }, modifier = Modifier.size(34.dp)) {
                         Icon(
-                            if (produto.emPromocao) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                            if (produto.emPromocao) Icons.Filled.Star else Icons.Outlined.StarOutline,
                             contentDescription = "Promoção",
-                            tint = if (produto.emPromocao) Color.Red else Color.Gray,
+                            tint = if (produto.emPromocao) GoldColor else Color.Gray,
                             modifier = Modifier.size(20.dp)
                         )
                     }
+
                     // Editar
                     IconButton(onClick = onEditar, modifier = Modifier.size(34.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = "Editar", tint = GoPrexOrange, modifier = Modifier.size(18.dp))
                     }
+
                     // Desativar
                     IconButton(onClick = onDesativar, modifier = Modifier.size(34.dp)) {
                         Icon(Icons.Default.Delete, contentDescription = "Desativar", tint = Color.Red.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
@@ -403,18 +453,46 @@ fun ProdutoCard(
         }
     }
 
+    // Dialog de Promoção
     if (showPromoDialog) {
         AlertDialog(
             onDismissRequest = { showPromoDialog = false },
             title = { Text(if (produto.emPromocao) "Editar Promoção" else "Criar Promoção") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(value = desconto, onValueChange = { desconto = it.filter { c -> c.isDigit() } }, label = { Text("Desconto") }, suffix = { Text("%") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = dataFim, onValueChange = { dataFim = it }, label = { Text("Data término") }, placeholder = { Text("31/12/2026") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = desconto,
+                        onValueChange = { desconto = it.filter { c -> c.isDigit() } },
+                        label = { Text("Porcentagem de desconto") },
+                        suffix = { Text("%") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = dataFim,
+                        onValueChange = { dataFim = it },
+                        label = { Text("Data de término (DD/MM/AAAA)") },
+                        placeholder = { Text("31/12/2026") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (produto.emPromocao) {
+                        TextButton(onClick = {
+                            onTogglePromocao()
+                            showPromoDialog = false
+                        }) {
+                            Text("Remover promoção", color = Color.Red)
+                        }
+                    }
                 }
             },
             confirmButton = {
-                Button(onClick = { onAtualizarPromocao(desconto.toIntOrNull() ?: 0, dataFim); showPromoDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = GoPrexOrange)) { Text("Salvar") }
+                Button(onClick = {
+                    onAtualizarPromocao(desconto.toIntOrNull() ?: 0, dataFim)
+                    showPromoDialog = false
+                }, colors = ButtonDefaults.buttonColors(containerColor = GoPrexOrange)) {
+                    Text("Salvar")
+                }
             },
             dismissButton = { TextButton(onClick = { showPromoDialog = false }) { Text("Cancelar") } }
         )
