@@ -11,5 +11,10 @@ data class Produto(
     val estado: String = "",
     val imagens: List<String> = emptyList(),
     val disponivel: Boolean = true,
-    val dataCriacao: Long = System.currentTimeMillis()
+    val dataCriacao: Long = System.currentTimeMillis(),
+    // Campos de promoção
+    val emPromocao: Boolean = false,
+    val porcentagemDesconto: Int = 0,
+    val precoPromocional: Double? = null,
+    val dataFimPromocao: String? = null
 )

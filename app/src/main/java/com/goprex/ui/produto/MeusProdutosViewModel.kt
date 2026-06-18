@@ -15,7 +15,8 @@ data class MeusProdutosUiState(
     val error: String? = null,
     val produtoSelecionado: Produto? = null,
     val isDeleting: Boolean = false,
-    val deleteSuccess: Boolean = false
+    val deleteSuccess: Boolean = false,
+    val logoUrl: String = ""
 )
 
 class MeusProdutosViewModel : ViewModel() {
@@ -27,22 +28,9 @@ class MeusProdutosViewModel : ViewModel() {
     fun carregarProdutos(nomeLoja: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-
-            val result = produtoRepository.listarProdutosPorLoja(nomeLoja)
-
-            result.fold(
-                onSuccess = { produtos ->
-                    _uiState.value = _uiState.value.copy(
-                        produtos = produtos,
-                        isLoading = false
-                    )
-                },
-                onFailure = { e ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = "Erro ao carregar produtos: ${e.message}"
-                    )
-                }
+            produtoRepository.listarProdutosPorLoja(nomeLoja).fold(
+                onSuccess = { produtos -> _uiState.value = _uiState.value.copy(produtos = produtos, isLoading = false) },
+                onFailure = { e -> _uiState.value = _uiState.value.copy(isLoading = false, error = "Erro: ${e.message}") }
             )
         }
     }
@@ -54,53 +42,59 @@ class MeusProdutosViewModel : ViewModel() {
     fun desativarProduto(nomeLoja: String, produtoId: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isDeleting = true)
-
-            val result = produtoRepository.desativarProduto(nomeLoja, produtoId)
-
-            result.fold(
+            produtoRepository.desativarProduto(nomeLoja, produtoId).fold(
                 onSuccess = {
-                    // Recarregar lista
                     carregarProdutos(nomeLoja)
-                    _uiState.value = _uiState.value.copy(
-                        isDeleting = false,
-                        deleteSuccess = true,
-                        produtoSelecionado = null
-                    )
+                    _uiState.value = _uiState.value.copy(isDeleting = false, deleteSuccess = true, produtoSelecionado = null)
                 },
-                onFailure = { e ->
-                    _uiState.value = _uiState.value.copy(
-                        isDeleting = false,
-                        error = "Erro ao desativar: ${e.message}"
-                    )
-                }
+                onFailure = { e -> _uiState.value = _uiState.value.copy(isDeleting = false, error = "Erro: ${e.message}") }
             )
         }
     }
 
     fun toggleDisponibilidade(nomeLoja: String, produto: Produto) {
         viewModelScope.launch {
-            val novoEstado = mapOf("disponivel" to !produto.disponivel)
-
-            val result = produtoRepository.atualizarProduto(nomeLoja, produto.id, novoEstado)
-
-            result.fold(
-                onSuccess = {
-                    carregarProdutos(nomeLoja)
-                },
-                onFailure = { e ->
-                    _uiState.value = _uiState.value.copy(
-                        error = "Erro ao atualizar: ${e.message}"
-                    )
-                }
+            produtoRepository.atualizarProduto(nomeLoja, produto.id, mapOf("disponivel" to !produto.disponivel)).fold(
+                onSuccess = { carregarProdutos(nomeLoja) },
+                onFailure = { e -> _uiState.value = _uiState.value.copy(error = "Erro: ${e.message}") }
             )
         }
     }
 
-    fun limparErro() {
-        _uiState.value = _uiState.value.copy(error = null)
+    fun togglePromocao(nomeLoja: String, produto: Produto) {
+        viewModelScope.launch {
+            produtoRepository.atualizarProduto(nomeLoja, produto.id, mapOf("emPromocao" to !produto.emPromocao)).fold(
+                onSuccess = { carregarProdutos(nomeLoja) },
+                onFailure = { e -> _uiState.value = _uiState.value.copy(error = "Erro: ${e.message}") }
+            )
+        }
     }
 
-    fun limparDeleteSuccess() {
-        _uiState.value = _uiState.value.copy(deleteSuccess = false)
+    fun atualizarPromocao(nomeLoja: String, produtoId: String, desconto: Int, dataFim: String) {
+        viewModelScope.launch {
+            val precoPromocional = if (desconto > 0) {
+                val produto = _uiState.value.produtos.find { it.id == produtoId }
+                produto?.preco?.let { it - (it * desconto / 100.0) } ?: 0.0
+            } else null
+
+            val dados = mapOf(
+                "emPromocao" to (desconto > 0),
+                "porcentagemDesconto" to desconto,
+                "precoPromocional" to (precoPromocional ?: 0.0),
+                "dataFimPromocao" to dataFim
+            )
+
+            produtoRepository.atualizarProduto(nomeLoja, produtoId, dados).fold(
+                onSuccess = { carregarProdutos(nomeLoja) },
+                onFailure = { e -> _uiState.value = _uiState.value.copy(error = "Erro: ${e.message}") }
+            )
+        }
     }
+
+    fun atualizarLogoLoja(nomeLoja: String, url: String) {
+        _uiState.value = _uiState.value.copy(logoUrl = url)
+    }
+
+    fun limparErro() { _uiState.value = _uiState.value.copy(error = null) }
+    fun limparDeleteSuccess() { _uiState.value = _uiState.value.copy(deleteSuccess = false) }
 }
