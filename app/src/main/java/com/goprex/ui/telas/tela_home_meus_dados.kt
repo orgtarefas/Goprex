@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goprex.data.model.Login
-import com.goprex.ui.menu.TelaComMenu
+import com.goprex.ui.menu.HeaderComMenu
 import com.goprex.ui.theme.GoPrexOrange
 import com.goprex.ui.theme.GoprexTheme
 import com.goprex.ui.theme.SurfaceWhite
@@ -40,7 +40,7 @@ class tela_home_meus_dados : ComponentActivity() {
 
         setContent {
             GoprexTheme {
-                TelaComMenu(
+                HeaderComMenu(
                     loginData = loginData,
                     titulo = "Meus Dados",
                     onLogout = {

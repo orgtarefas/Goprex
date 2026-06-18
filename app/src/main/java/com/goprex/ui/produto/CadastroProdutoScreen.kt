@@ -3,8 +3,10 @@ package com.goprex.ui.produto
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -25,6 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -34,7 +37,6 @@ import com.goprex.ui.theme.GoPrexDark
 import com.goprex.ui.theme.GoPrexOrange
 import com.goprex.ui.theme.SuccessGreen
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CadastroProdutoScreen(
     loginData: Login,
@@ -52,260 +54,463 @@ fun CadastroProdutoScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text("Cadastrar Produto", color = Color.White, fontWeight = FontWeight.Bold)
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Voltar", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = GoPrexDark)
-            )
+    // Efeito para voltar após sucesso
+    LaunchedEffect(uiState.estadoCadastro) {
+        if (uiState.estadoCadastro is CadastroState.Sucesso) {
+            // Pequeno delay para mostrar o sucesso
+            kotlinx.coroutines.delay(1500)
+            viewModel.limparEstado()
+            onBack()
         }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Indicador de progresso quando salvando
+        AnimatedVisibility(
+            visible = viewModel.isLoading,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
         ) {
-            // Card: Informações do Produto
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                colors = CardDefaults.cardColors(containerColor = GoPrexOrange.copy(alpha = 0.1f)),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("Informações do Produto", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = GoPrexDark)
-
-                    OutlinedTextField(
-                        value = uiState.titulo,
-                        onValueChange = { viewModel.updateTitulo(it) },
-                        label = { Text("Título do Produto") },
-                        placeholder = { Text("Ex: iPhone 15 Pro Max") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GoPrexOrange,
-                            unfocusedBorderColor = GoPrexDark.copy(alpha = 0.3f),
-                            focusedLabelColor = GoPrexOrange,
-                            unfocusedLabelColor = GoPrexDark.copy(alpha = 0.7f),
-                            cursorColor = GoPrexOrange
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-
-                    OutlinedTextField(
-                        value = uiState.descricao,
-                        onValueChange = { viewModel.updateDescricao(it) },
-                        label = { Text("Descrição") },
-                        placeholder = { Text("Descreva o produto em detalhes...") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 4,
-                        maxLines = 6,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GoPrexOrange,
-                            unfocusedBorderColor = GoPrexDark.copy(alpha = 0.3f),
-                            focusedLabelColor = GoPrexOrange,
-                            unfocusedLabelColor = GoPrexDark.copy(alpha = 0.7f),
-                            cursorColor = GoPrexOrange
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = uiState.preco,
-                            onValueChange = { viewModel.updatePreco(it) },
-                            label = { Text("Preço") },
-                            placeholder = { Text("0,00") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            prefix = { Text("R$ ", color = GoPrexOrange) },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = GoPrexOrange,
-                                unfocusedBorderColor = GoPrexDark.copy(alpha = 0.3f),
-                                focusedLabelColor = GoPrexOrange,
-                                unfocusedLabelColor = GoPrexDark.copy(alpha = 0.7f),
-                                cursorColor = GoPrexOrange
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        )
-
-                        OutlinedTextField(
-                            value = uiState.categoria,
-                            onValueChange = { viewModel.updateCategoria(it) },
-                            label = { Text("Categoria") },
-                            placeholder = { Text("Ex: Eletrônicos") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = GoPrexOrange,
-                                unfocusedBorderColor = GoPrexDark.copy(alpha = 0.3f),
-                                focusedLabelColor = GoPrexOrange,
-                                unfocusedLabelColor = GoPrexDark.copy(alpha = 0.7f),
-                                cursorColor = GoPrexOrange
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        )
+                    when (val estado = uiState.estadoCadastro) {
+                        is CadastroState.EnviandoImagens -> {
+                            LinearProgressIndicator(
+                                progress = { estado.progresso.toFloat() / estado.total },
+                                modifier = Modifier.fillMaxWidth(),
+                                color = GoPrexOrange,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Enviando imagem ${estado.progresso} de ${estado.total}",
+                                fontSize = 14.sp,
+                                color = GoPrexOrange,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        is CadastroState.SalvandoProduto -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = GoPrexOrange,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Salvando produto no catálogo...",
+                                fontSize = 14.sp,
+                                color = GoPrexOrange
+                            )
+                        }
+                        else -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = GoPrexOrange,
+                                strokeWidth = 2.dp
+                            )
+                        }
                     }
                 }
             }
+        }
 
-            // Card: Imagens
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        // Card: Informações do Produto
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Info, null, tint = GoPrexOrange, modifier = Modifier.size(24.dp))
+                    Text(
+                        "Informações do Produto",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = GoPrexDark
+                    )
+                }
+
+                OutlinedTextField(
+                    value = uiState.titulo,
+                    onValueChange = { viewModel.updateTitulo(it) },
+                    label = { Text("Título do Produto *") },
+                    placeholder = { Text("Ex: iPhone 15 Pro Max 256GB") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = uiState.camposValidados["titulo"] == false,
+                    supportingText = if (uiState.camposValidados["titulo"] == false) {
+                        { Text("Título é obrigatório", color = MaterialTheme.colorScheme.error) }
+                    } else null,
+                    leadingIcon = { Icon(Icons.Default.Label, null, tint = GoPrexOrange) },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = GoPrexOrange,
+                        unfocusedBorderColor = GoPrexDark.copy(alpha = 0.3f),
+                        focusedLabelColor = GoPrexOrange,
+                        cursorColor = GoPrexOrange
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                )
+
+                OutlinedTextField(
+                    value = uiState.descricao,
+                    onValueChange = { viewModel.updateDescricao(it) },
+                    label = { Text("Descrição *") },
+                    placeholder = { Text("Descreva características, estado de conservação, etc...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 4,
+                    maxLines = 8,
+                    isError = uiState.camposValidados["descricao"] == false,
+                    supportingText = if (uiState.camposValidados["descricao"] == false) {
+                        { Text("Descrição é obrigatória", color = MaterialTheme.colorScheme.error) }
+                    } else null,
+                    leadingIcon = { Icon(Icons.Default.Description, null, tint = GoPrexOrange) },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = GoPrexOrange,
+                        unfocusedBorderColor = GoPrexDark.copy(alpha = 0.3f),
+                        focusedLabelColor = GoPrexOrange,
+                        cursorColor = GoPrexOrange
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = uiState.preco,
+                        onValueChange = { viewModel.updatePreco(it) },
+                        label = { Text("Preço *") },
+                        placeholder = { Text("0,00") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        prefix = { Text("R$ ", color = GoPrexOrange, fontWeight = FontWeight.Bold) },
+                        isError = uiState.camposValidados["preco"] == false,
+                        leadingIcon = { Icon(Icons.Default.AttachMoney, null, tint = GoPrexOrange) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GoPrexOrange,
+                            unfocusedBorderColor = GoPrexDark.copy(alpha = 0.3f),
+                            focusedLabelColor = GoPrexOrange,
+                            cursorColor = GoPrexOrange
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = uiState.categoria,
+                        onValueChange = { viewModel.updateCategoria(it) },
+                        label = { Text("Categoria") },
+                        placeholder = { Text("Ex: Eletrônicos") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                        leadingIcon = { Icon(Icons.Default.Category, null, tint = GoPrexOrange) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GoPrexOrange,
+                            unfocusedBorderColor = GoPrexDark.copy(alpha = 0.3f),
+                            focusedLabelColor = GoPrexOrange,
+                            cursorColor = GoPrexOrange
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                }
+            }
+        }
+
+        // Card: Imagens
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Imagens do Produto", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = GoPrexDark)
-                        if (uiState.imagensUris.isNotEmpty()) {
-                            Text("${uiState.imagensUris.size}/5", fontSize = 14.sp, color = GoPrexOrange, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Default.Image, null, tint = GoPrexOrange, modifier = Modifier.size(24.dp))
+                        Text(
+                            "Imagens do Produto *",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = GoPrexDark
+                        )
+                    }
+                    if (uiState.imagensUris.isNotEmpty()) {
+                        Surface(
+                            color = GoPrexOrange.copy(alpha = 0.1f),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Text(
+                                "${uiState.imagensUris.size}/5",
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                fontSize = 14.sp,
+                                color = GoPrexOrange,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
+                }
 
-                    if (uiState.imagensUris.isNotEmpty()) {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            items(uiState.imagensUris) { uri ->
-                                Box(modifier = Modifier.size(100.dp).clip(RoundedCornerShape(8.dp))) {
-                                    Image(
-                                        painter = rememberAsyncImagePainter(uri),
-                                        contentDescription = "Imagem do produto",
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop
+                // Grid de imagens
+                if (uiState.imagensUris.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(uiState.imagensUris) { uri ->
+                            Box(
+                                modifier = Modifier
+                                    .size(110.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .border(2.dp, GoPrexOrange.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                            ) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(uri),
+                                    contentDescription = "Imagem do produto",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+
+                                // Botão remover
+                                IconButton(
+                                    onClick = { viewModel.removeImage(uri) },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .size(28.dp)
+                                        .background(Color.Black.copy(alpha = 0.7f), CircleShape)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        "Remover imagem",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
                                     )
-                                    IconButton(
-                                        onClick = { viewModel.removeImage(uri) },
-                                        modifier = Modifier.align(Alignment.TopEnd).size(28.dp).background(Color.Black.copy(alpha = 0.6f), CircleShape)
+                                }
+
+                                // Indicador de capa
+                                if (uiState.imagensUris.indexOf(uri) == 0) {
+                                    Surface(
+                                        modifier = Modifier.align(Alignment.BottomStart),
+                                        color = GoPrexOrange,
+                                        shape = RoundedCornerShape(topEnd = 8.dp)
                                     ) {
-                                        Icon(Icons.Default.Close, "Remover imagem", tint = Color.White, modifier = Modifier.size(16.dp))
-                                    }
-                                    if (uiState.imagensUris.indexOf(uri) == 0) {
-                                        Box(
-                                            modifier = Modifier.align(Alignment.BottomStart)
-                                                .background(GoPrexOrange.copy(alpha = 0.8f), RoundedCornerShape(topEnd = 4.dp))
-                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                                         ) {
-                                            Text("Capa", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                            Icon(
+                                                Icons.Default.Star,
+                                                null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                            Text(
+                                                "Capa",
+                                                fontSize = 11.sp,
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold
+                                            )
                                         }
                                     }
                                 }
                             }
                         }
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().height(100.dp).clip(RoundedCornerShape(8.dp)).background(Color.Gray.copy(alpha = 0.1f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Add, null, tint = Color.Gray, modifier = Modifier.size(32.dp))
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text("Nenhuma imagem adicionada", fontSize = 12.sp, color = Color.Gray)
-                            }
-                        }
-                    }
-
-                    Button(
-                        onClick = { imagePickerLauncher.launch("image/*") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = GoPrexOrange.copy(alpha = 0.1f), contentColor = GoPrexOrange),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(Icons.Default.Add, null, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Adicionar Imagens", fontWeight = FontWeight.Bold)
-                    }
-
-                    Text("Máximo 5 imagens • Formatos: JPG, PNG • A primeira imagem será a capa", fontSize = 11.sp, color = Color.Gray)
-                }
-            }
-
-            // Card: Erro
-            if (uiState.error != null) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(uiState.error!!, color = MaterialTheme.colorScheme.error, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Botão Salvar
-            Button(
-                onClick = {
-                    viewModel.salvarProduto(
-                        vendedorLogin = loginData.documentoId,
-                        cidade = loginData.getString("cidade"),
-                        estado = loginData.getString("estado"),
-                        context = context
-                    )
-                },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                enabled = !uiState.isLoading,
-                colors = ButtonDefaults.buttonColors(containerColor = GoPrexOrange, disabledContainerColor = GoPrexOrange.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(12.dp),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
-            ) {
-                if (uiState.isLoading) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("Salvando...", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 } else {
-                    Icon(Icons.Default.Check, null, modifier = Modifier.size(20.dp))
+                    // Placeholder vazio
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.Gray.copy(alpha = 0.05f))
+                            .border(2.dp, Color.Gray.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.AddPhotoAlternate,
+                                null,
+                                tint = Color.Gray.copy(alpha = 0.5f),
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Nenhuma imagem adicionada",
+                                fontSize = 14.sp,
+                                color = Color.Gray.copy(alpha = 0.7f),
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                "Toque no botão abaixo para adicionar",
+                                fontSize = 12.sp,
+                                color = Color.Gray.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                }
+
+                Button(
+                    onClick = { imagePickerLauncher.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = GoPrexOrange.copy(alpha = 0.1f),
+                        contentColor = GoPrexOrange
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    enabled = uiState.imagensUris.size < 5
+                ) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Salvar Produto", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("Adicionar Imagens", fontWeight = FontWeight.Bold)
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "Máximo 5 imagens",
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
+                    Text(
+                        "Formatos: JPG, PNG",
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
-    }
 
-    // Dialog de sucesso
-    if (uiState.isSuccess) {
-        AlertDialog(
-            onDismissRequest = { viewModel.clearSuccess(); onBack() },
-            icon = { Icon(Icons.Default.CheckCircle, null, tint = SuccessGreen, modifier = Modifier.size(48.dp)) },
-            title = { Text("Produto Cadastrado!", fontWeight = FontWeight.Bold, fontSize = 20.sp) },
-            text = { Text("Seu produto foi cadastrado com sucesso e já está disponível para venda.", fontSize = 14.sp, color = Color.Gray) },
-            confirmButton = {
-                Button(onClick = { viewModel.clearSuccess(); onBack() }, colors = ButtonDefaults.buttonColors(containerColor = GoPrexOrange)) {
-                    Text("OK")
+        // Card: Erro
+        AnimatedVisibility(
+            visible = uiState.estadoCadastro is CadastroState.Erro,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            val mensagemErro = (uiState.estadoCadastro as? CadastroState.Erro)?.mensagem ?: ""
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Error,
+                        null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            "Erro ao cadastrar",
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            mensagemErro,
+                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             }
-        )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Botão Salvar
+        Button(
+            onClick = {
+                viewModel.salvarProduto(
+                    vendedorLogin = loginData.documentoId,
+                    cidade = loginData.getString("cidade"),
+                    estado = loginData.getString("estado"),
+                    context = context
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            enabled = !viewModel.isLoading,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = GoPrexOrange,
+                disabledContainerColor = GoPrexOrange.copy(alpha = 0.5f)
+            ),
+            shape = RoundedCornerShape(12.dp),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+        ) {
+            if (viewModel.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("Processando...", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            } else {
+                Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    if (uiState.produtoEditando != null) "Atualizar Produto" else "Cadastrar Produto",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+        }
+
+        // Botão Cancelar (secundário)
+        if (!viewModel.isLoading) {
+            OutlinedButton(
+                onClick = onBack,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = GoPrexDark),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.ArrowBack, null, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Cancelar", fontWeight = FontWeight.Medium)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }

@@ -44,7 +44,7 @@ import java.io.InputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TelaComMenu(
+fun HeaderComMenu(
     loginData: Login,
     titulo: String,
     onLogout: () -> Unit,

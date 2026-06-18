@@ -6,7 +6,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.goprex.data.model.Login
-import com.goprex.ui.menu.TelaComMenu
+import com.goprex.ui.menu.HeaderComMenu
+import com.goprex.ui.produto.CadastroProdutoScreen
 import com.goprex.ui.theme.GoprexTheme
 
 class tela_cadastrar_produtos : ComponentActivity() {
@@ -23,11 +24,23 @@ class tela_cadastrar_produtos : ComponentActivity() {
         val loginData = Login(documentoId = documentoId, dados = dadosMap)
         setContent {
             GoprexTheme {
-                TelaComMenu(loginData = loginData, titulo = "Cadastrar Produtos", onLogout = {
-                    sharedPrefs.edit().clear().apply()
-                    startActivity(Intent(this, com.goprex.MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK })
-                    finish()
-                })
+                HeaderComMenu(
+                    loginData = loginData,
+                    titulo = "Cadastrar Produtos",
+                    onLogout = {
+                        sharedPrefs.edit().clear().apply()
+                        startActivity(Intent(this, com.goprex.MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        })
+                        finish()
+                    },
+                    conteudo = {
+                        CadastroProdutoScreen(
+                            loginData = loginData,
+                            onBack = { finish() }
+                        )
+                    }
+                )
             }
         }
     }
