@@ -15,8 +15,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.FlagOutlined
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -107,9 +108,7 @@ fun MeusProdutosScreen(
             shadowElevation = 4.dp
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -120,24 +119,16 @@ fun MeusProdutosScreen(
                 }
 
                 Box(
-                    modifier = Modifier
-                        .size(70.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.White.copy(alpha = 0.1f))
+                    modifier = Modifier.size(70.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.1f))
                         .clickable(enabled = !isUploadingLogo) { logoPickerLauncher.launch("image/*") },
                     contentAlignment = Alignment.Center
                 ) {
                     if (isUploadingLogo) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
                     } else if (logoUrl.isNotEmpty()) {
-                        Image(
-                            painter = rememberAsyncImagePainter(logoUrl),
-                            contentDescription = "Logo da loja",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                        Image(painter = rememberAsyncImagePainter(logoUrl), contentDescription = "Logo", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.Store, null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.height(2.dp))
                             Text("LOGO", fontSize = 8.sp, color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
@@ -148,7 +139,6 @@ fun MeusProdutosScreen(
             }
         }
 
-        // Conteúdo principal
         when {
             uiState.isLoading -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -193,10 +183,7 @@ fun MeusProdutosScreen(
                             colors = CardDefaults.cardColors(containerColor = GoPrexOrange.copy(alpha = 0.1f)),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
+                            Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("${uiState.produtos.size} produto(s)", fontWeight = FontWeight.Bold, color = GoPrexOrange)
                                 Text("${uiState.produtos.count { it.disponivel }} disponível(is)", color = GoPrexDark.copy(alpha = 0.7f))
                             }
@@ -206,12 +193,8 @@ fun MeusProdutosScreen(
                     items(uiState.produtos, key = { it.id }) { produto ->
                         ProdutoCard(
                             produto = produto,
-                            onToggleDisponibilidade = {
-                                viewModel.toggleDisponibilidade(nomeLoja, produto)
-                            },
-                            onTogglePromocao = {
-                                viewModel.togglePromocao(nomeLoja, produto)
-                            },
+                            onToggleDisponibilidade = { viewModel.toggleDisponibilidade(nomeLoja, produto) },
+                            onTogglePromocao = { viewModel.togglePromocao(nomeLoja, produto) },
                             onEditar = { onEditarProduto(produto.id) },
                             onDesativar = { viewModel.selecionarProduto(produto) },
                             onVerDetalhes = { produtoDetalhe = produto },
@@ -225,145 +208,77 @@ fun MeusProdutosScreen(
         }
     }
 
-    // Dialog de detalhes
     if (produtoDetalhe != null) {
         ProdutoDetalheDialog(
             produto = produtoDetalhe!!,
             onDismiss = { produtoDetalhe = null },
-            onEditar = {
-                onEditarProduto(produtoDetalhe!!.id)
-                produtoDetalhe = null
-            }
+            onEditar = { onEditarProduto(produtoDetalhe!!.id); produtoDetalhe = null }
         )
     }
 
-    // Dialog de confirmação para desativar
     if (uiState.produtoSelecionado != null) {
         AlertDialog(
             onDismissRequest = { viewModel.selecionarProduto(null) },
             icon = { Icon(Icons.Default.Warning, null, tint = Color.Red) },
             title = { Text("Desativar Produto") },
-            text = { Text("Deseja realmente desativar \"${uiState.produtoSelecionado?.titulo}\"?\n\nO produto ficará indisponível para venda.") },
+            text = { Text("Deseja realmente desativar \"${uiState.produtoSelecionado?.titulo}\"?") },
             confirmButton = {
                 Button(
                     onClick = { viewModel.desativarProduto(nomeLoja, uiState.produtoSelecionado!!.id) },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-                ) {
-                    if (uiState.isDeleting) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
-                    } else {
-                        Text("Desativar")
-                    }
-                }
+                ) { Text(if (uiState.isDeleting) "..." else "Desativar") }
             },
             dismissButton = { TextButton(onClick = { viewModel.selecionarProduto(null) }) { Text("Cancelar") } }
         )
     }
-
-    if (uiState.deleteSuccess) {
-        LaunchedEffect(Unit) {
-            kotlinx.coroutines.delay(2000)
-            viewModel.limparDeleteSuccess()
-        }
-    }
 }
 
-// =============================================
-// Dialog de Detalhes do Produto
-// =============================================
+// ============ DIALOG DETALHES ============
 @Composable
-fun ProdutoDetalheDialog(
-    produto: Produto,
-    onDismiss: () -> Unit,
-    onEditar: () -> Unit
-) {
+fun ProdutoDetalheDialog(produto: Produto, onDismiss: () -> Unit, onEditar: () -> Unit) {
     val numberFormat = remember { NumberFormat.getCurrencyInstance(Locale("pt", "BR")) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(produto.titulo, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        },
+        title = { Text(produto.titulo, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis) },
         text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Imagem principal
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (produto.imagens.isNotEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)).background(Color.Gray.copy(alpha = 0.1f))
-                    ) {
-                        Image(
-                            painter = rememberAsyncImagePainter(produto.imagens.first()),
-                            contentDescription = produto.titulo,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                    Box(modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)).background(Color.Gray.copy(alpha = 0.1f))) {
+                        Image(painter = rememberAsyncImagePainter(produto.imagens.first()), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     }
                 }
 
-                // Preço com promoção
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (produto.emPromocao && produto.precoPromocional != null && produto.precoPromocional > 0) {
-                        Text(
-                            numberFormat.format(produto.preco),
-                            fontSize = 16.sp,
-                            color = Color.Gray,
-                            textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
-                        )
-                        Text(
-                            numberFormat.format(produto.precoPromocional),
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Red
-                        )
+                        Text(numberFormat.format(produto.preco), fontSize = 16.sp, color = Color.Gray, textDecoration = TextDecoration.LineThrough)
+                        Text(numberFormat.format(produto.precoPromocional), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.Red)
                         Surface(color = Color.Red, shape = RoundedCornerShape(4.dp)) {
-                            Text(
-                                "-${produto.porcentagemDesconto}%",
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
+                            Text("-${produto.porcentagemDesconto}%", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     } else {
                         Text(numberFormat.format(produto.preco), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = SuccessGreen)
                     }
                 }
 
-                // Flags de status
+                // Flags com Bookmark
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // Flag Disponibilidade
-                    Surface(
-                        color = if (produto.disponivel) SuccessGreen.copy(alpha = 0.1f) else Color.Red.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
+                    Surface(color = if (produto.disponivel) SuccessGreen.copy(alpha = 0.1f) else Color.Red.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
                         Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                if (produto.disponivel) Icons.Filled.Flag else Icons.Outlined.FlagOutlined,
+                                if (produto.disponivel) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
                                 null,
                                 tint = if (produto.disponivel) SuccessGreen else Color.Red,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                if (produto.disponivel) "Disponível" else "Indisponível",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (produto.disponivel) SuccessGreen else Color.Red
-                            )
+                            Text(if (produto.disponivel) "Disponível" else "Indisponível", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (produto.disponivel) SuccessGreen else Color.Red)
                         }
                     }
-
-                    // Flag Promoção
                     if (produto.emPromocao) {
-                        Surface(
-                            color = Color.Red.copy(alpha = 0.1f),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
+                        Surface(color = Color.Red.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp)) {
                             Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Filled.Flag, null, tint = Color.Red, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Filled.Bookmark, null, tint = Color.Red, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text("Em Promoção", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.Red)
                             }
@@ -371,7 +286,6 @@ fun ProdutoDetalheDialog(
                     }
                 }
 
-                // Categoria
                 if (produto.categoria.isNotEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Category, null, tint = GoPrexOrange, modifier = Modifier.size(18.dp))
@@ -380,43 +294,9 @@ fun ProdutoDetalheDialog(
                     }
                 }
 
-                // Localização
-                if (produto.cidade.isNotEmpty() || produto.estado.isNotEmpty()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.LocationOn, null, tint = GoPrexOrange, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("${produto.cidade}/${produto.estado}", fontSize = 14.sp, color = GoPrexDark)
-                    }
-                }
-
-                // Promoção (se ativa)
-                if (produto.emPromocao) {
-                    Divider()
-                    Text("Detalhes da Promoção", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = GoPrexDark)
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Column {
-                            Text("Desconto", fontSize = 12.sp, color = Color.Gray)
-                            Text("${produto.porcentagemDesconto}%", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Red)
-                        }
-                        if (produto.dataFimPromocao != null) {
-                            Column {
-                                Text("Válido até", fontSize = 12.sp, color = Color.Gray)
-                                Text(produto.dataFimPromocao, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = GoPrexDark)
-                            }
-                        }
-                    }
-                }
-
                 Divider()
-
-                // Descrição
                 Text("Descrição", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = GoPrexDark)
-                Text(
-                    produto.descricao.ifBlank { "Sem descrição" },
-                    fontSize = 14.sp,
-                    color = if (produto.descricao.isNotBlank()) GoPrexDark.copy(alpha = 0.8f) else Color.Gray,
-                    lineHeight = 20.sp
-                )
+                Text(produto.descricao.ifBlank { "Sem descrição" }, fontSize = 14.sp, color = GoPrexDark.copy(alpha = 0.8f), lineHeight = 20.sp)
             }
         },
         confirmButton = {
@@ -430,9 +310,7 @@ fun ProdutoDetalheDialog(
     )
 }
 
-// =============================================
-// Card do Produto
-// =============================================
+// ============ CARD PRODUTO ============
 @Composable
 fun ProdutoCard(
     produto: Produto,
@@ -450,138 +328,72 @@ fun ProdutoCard(
 
     Card(
         modifier = Modifier.fillMaxWidth().clickable { onVerDetalhes() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (produto.disponivel) Color.White else Color.Gray.copy(alpha = 0.1f)
-        ),
+        colors = CardDefaults.cardColors(containerColor = if (produto.disponivel) Color.White else Color.Gray.copy(alpha = 0.1f)),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Imagem do produto
-                Box(
-                    modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)).background(Color.Gray.copy(alpha = 0.2f))
-                ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(modifier = Modifier.size(80.dp).clip(RoundedCornerShape(8.dp)).background(Color.Gray.copy(alpha = 0.2f))) {
                     if (produto.imagens.isNotEmpty()) {
-                        Image(
-                            painter = rememberAsyncImagePainter(produto.imagens.first()),
-                            contentDescription = produto.titulo,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                        Image(painter = rememberAsyncImagePainter(produto.imagens.first()), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     } else {
                         Icon(Icons.Default.Image, null, tint = Color.Gray, modifier = Modifier.fillMaxSize().padding(20.dp))
                     }
                 }
 
-                // Informações
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        produto.titulo,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = if (produto.disponivel) GoPrexDark else Color.Gray
-                    )
-
+                    Text(produto.titulo, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (produto.disponivel) GoPrexDark else Color.Gray)
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // Preço com promoção
                     if (produto.emPromocao && produto.precoPromocional != null && produto.precoPromocional > 0) {
                         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                numberFormat.format(produto.preco),
-                                fontSize = 12.sp,
-                                color = Color.Gray,
-                                textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
-                            )
-                            Text(
-                                numberFormat.format(produto.precoPromocional),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                color = Color.Red
-                            )
+                            Text(numberFormat.format(produto.preco), fontSize = 12.sp, color = Color.Gray, textDecoration = TextDecoration.LineThrough)
+                            Text(numberFormat.format(produto.precoPromocional), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.Red)
                         }
                     } else {
-                        Text(
-                            numberFormat.format(produto.preco),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = if (produto.disponivel) SuccessGreen else Color.Gray
-                        )
+                        Text(numberFormat.format(produto.preco), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = if (produto.disponivel) SuccessGreen else Color.Gray)
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
-
-                    // Tags
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (produto.categoria.isNotEmpty()) {
                             Surface(color = GoPrexOrange.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
-                                Text(
-                                    produto.categoria,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    fontSize = 11.sp,
-                                    color = GoPrexOrange
-                                )
+                                Text(produto.categoria, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), fontSize = 11.sp, color = GoPrexOrange)
                             }
                         }
                         if (produto.emPromocao) {
                             Surface(color = Color.Red.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
-                                Text(
-                                    "-${produto.porcentagemDesconto}%",
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Red
-                                )
+                                Text("-${produto.porcentagemDesconto}%", modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.Red)
                             }
                         }
                     }
-
-                    // Descrição resumida
-                    if (produto.descricao.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            produto.descricao,
-                            fontSize = 12.sp,
-                            color = Color.Gray,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
                 }
 
-                // Ações
+                // Ações com Bookmark
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    // Flag Disponibilidade
+                    // Disponibilidade
                     IconButton(onClick = onToggleDisponibilidade, modifier = Modifier.size(34.dp)) {
                         Icon(
-                            if (produto.disponivel) Icons.Filled.Flag else Icons.Outlined.FlagOutlined,
+                            if (produto.disponivel) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
                             contentDescription = "Disponibilidade",
                             tint = if (produto.disponivel) SuccessGreen else Color.Gray,
                             modifier = Modifier.size(20.dp)
                         )
                     }
-
-                    // Flag Promoção
+                    // Promoção
                     IconButton(onClick = { showPromoDialog = true }, modifier = Modifier.size(34.dp)) {
                         Icon(
-                            if (produto.emPromocao) Icons.Filled.Flag else Icons.Outlined.FlagOutlined,
+                            if (produto.emPromocao) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
                             contentDescription = "Promoção",
                             tint = if (produto.emPromocao) Color.Red else Color.Gray,
                             modifier = Modifier.size(20.dp)
                         )
                     }
-
                     // Editar
                     IconButton(onClick = onEditar, modifier = Modifier.size(34.dp)) {
                         Icon(Icons.Default.Edit, contentDescription = "Editar", tint = GoPrexOrange, modifier = Modifier.size(18.dp))
                     }
-
                     // Desativar
                     IconButton(onClick = onDesativar, modifier = Modifier.size(34.dp)) {
                         Icon(Icons.Default.Delete, contentDescription = "Desativar", tint = Color.Red.copy(alpha = 0.7f), modifier = Modifier.size(18.dp))
@@ -591,48 +403,20 @@ fun ProdutoCard(
         }
     }
 
-    // Dialog de Promoção
     if (showPromoDialog) {
         AlertDialog(
             onDismissRequest = { showPromoDialog = false },
             title = { Text(if (produto.emPromocao) "Editar Promoção" else "Criar Promoção") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(
-                        value = desconto,
-                        onValueChange = { desconto = it.filter { c -> c.isDigit() } },
-                        label = { Text("Porcentagem de desconto") },
-                        suffix = { Text("%") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = dataFim,
-                        onValueChange = { dataFim = it },
-                        label = { Text("Data de término (DD/MM/AAAA)") },
-                        placeholder = { Text("31/12/2026") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    OutlinedTextField(value = desconto, onValueChange = { desconto = it.filter { c -> c.isDigit() } }, label = { Text("Desconto") }, suffix = { Text("%") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = dataFim, onValueChange = { dataFim = it }, label = { Text("Data término") }, placeholder = { Text("31/12/2026") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 }
             },
             confirmButton = {
-                Button(
-                    onClick = {
-                        val descontoInt = desconto.toIntOrNull() ?: 0
-                        onAtualizarPromocao(descontoInt, dataFim)
-                        showPromoDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = GoPrexOrange)
-                ) {
-                    Text("Salvar")
-                }
+                Button(onClick = { onAtualizarPromocao(desconto.toIntOrNull() ?: 0, dataFim); showPromoDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = GoPrexOrange)) { Text("Salvar") }
             },
-            dismissButton = {
-                TextButton(onClick = { showPromoDialog = false }) {
-                    Text("Cancelar")
-                }
-            }
+            dismissButton = { TextButton(onClick = { showPromoDialog = false }) { Text("Cancelar") } }
         )
     }
 }
