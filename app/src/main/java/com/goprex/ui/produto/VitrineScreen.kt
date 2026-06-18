@@ -31,7 +31,7 @@ import com.goprex.ui.theme.SuccessGreen
 import java.text.NumberFormat
 import java.util.Locale
 
-val GoldColor = Color(0xFFFFD700)
+// REMOVIDO: val GoldColor = Color(0xFFFFD700)  ← NÃO DECLARAR AQUI
 
 @Composable
 fun VitrineScreen(
@@ -44,147 +44,44 @@ fun VitrineScreen(
     LaunchedEffect(Unit) { viewModel.carregarProdutos() }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header
         Surface(modifier = Modifier.fillMaxWidth(), color = GoPrexDark, shadowElevation = 4.dp) {
-            Text(
-                "Vitrine de Produtos",
-                modifier = Modifier.padding(16.dp),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+            Text("Vitrine de Produtos", modifier = Modifier.padding(16.dp), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
         }
 
         when {
-            uiState.isLoading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = GoPrexOrange)
-                }
-            }
-            uiState.error != null -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(uiState.error!!, color = Color.Red)
-                }
-            }
-            uiState.produtos.isEmpty() -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Nenhum produto disponível", color = Color.Gray, fontSize = 16.sp)
-                }
-            }
-            else -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(uiState.produtos, key = { it.id }) { produto ->
-                        ProdutoVitrineCard(
-                            produto = produto,
-                            numberFormat = numberFormat,
-                            onClick = { onProdutoClick(produto) }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ProdutoVitrineCard(
-    produto: Produto,
-    numberFormat: NumberFormat,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column {
-            // Imagem
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(150.dp)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                    .background(Color.Gray.copy(alpha = 0.1f))
+            uiState.isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = GoPrexOrange) }
+            uiState.error != null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(uiState.error!!, color = Color.Red) }
+            uiState.produtos.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Nenhum produto disponível", color = Color.Gray, fontSize = 16.sp) }
+            else -> LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                contentPadding = PaddingValues(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (produto.imagens.isNotEmpty()) {
-                    Image(
-                        painter = rememberAsyncImagePainter(produto.imagens.first()),
-                        contentDescription = produto.titulo,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                // Tag de promoção
-                if (produto.emPromocao) {
-                    Surface(
-                        modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
-                        color = Color.Red,
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Filled.Star, null, tint = Color.White, modifier = Modifier.size(12.dp))
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Text(
-                                "-${produto.porcentagemDesconto}%",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
+                items(uiState.produtos, key = { it.id }) { produto ->
+                    Card(modifier = Modifier.fillMaxWidth().clickable { onProdutoClick(produto) }, shape = RoundedCornerShape(12.dp), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+                        Column {
+                            Box(modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)).background(Color.Gray.copy(alpha = 0.1f))) {
+                                if (produto.imagens.isNotEmpty()) Image(painter = rememberAsyncImagePainter(produto.imagens.first()), contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                if (produto.emPromocao) Surface(modifier = Modifier.align(Alignment.TopStart).padding(8.dp), color = Color.Red, shape = RoundedCornerShape(4.dp)) {
+                                    Row(modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Filled.Star, null, tint = Color.White, modifier = Modifier.size(12.dp))
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Text("-${produto.porcentagemDesconto}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                }
+                            }
+                            Column(modifier = Modifier.padding(8.dp)) {
+                                Text(produto.titulo, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = GoPrexDark)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                if (produto.emPromocao && produto.precoPromocional != null && produto.precoPromocional > 0) {
+                                    Text(numberFormat.format(produto.preco), fontSize = 12.sp, color = Color.Gray, textDecoration = TextDecoration.LineThrough)
+                                    Text(numberFormat.format(produto.precoPromocional), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Red)
+                                } else Text(numberFormat.format(produto.preco), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = SuccessGreen)
+                                if (produto.categoria.isNotEmpty()) { Spacer(modifier = Modifier.height(4.dp)); Text(produto.categoria, fontSize = 11.sp, color = GoPrexOrange) }
+                            }
                         }
                     }
-                }
-            }
-
-            // Informações
-            Column(modifier = Modifier.padding(8.dp)) {
-                Text(
-                    produto.titulo,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = GoPrexDark
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-
-                if (produto.emPromocao && produto.precoPromocional != null && produto.precoPromocional > 0) {
-                    Text(
-                        numberFormat.format(produto.preco),
-                        fontSize = 12.sp,
-                        color = Color.Gray,
-                        textDecoration = TextDecoration.LineThrough
-                    )
-                    Text(
-                        numberFormat.format(produto.precoPromocional),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = Color.Red
-                    )
-                } else {
-                    Text(
-                        numberFormat.format(produto.preco),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = SuccessGreen
-                    )
-                }
-
-                // Categoria e loja
-                if (produto.categoria.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        produto.categoria,
-                        fontSize = 11.sp,
-                        color = GoPrexOrange
-                    )
                 }
             }
         }
