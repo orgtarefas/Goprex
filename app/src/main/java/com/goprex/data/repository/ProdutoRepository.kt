@@ -94,31 +94,24 @@ class ProdutoRepository {
      */
     suspend fun listarTodosProdutosDisponiveis(): Result<List<Produto>> {
         return try {
-            val lojasSnapshot = firestore.collection("produtos")
-                .get()
-                .await()
-
+            val lojasSnapshot = firestore.collection("produtos").get().await()
             val todosProdutos = mutableListOf<Produto>()
 
             for (lojaDoc in lojasSnapshot.documents) {
                 val itensSnapshot = lojaDoc.reference
                     .collection("itens")
                     .whereEqualTo("disponivel", true)
-                    .orderBy("dataCriacao", Query.Direction.DESCENDING)
+                    .orderBy("dataCriacao", com.google.firebase.firestore.Query.Direction.DESCENDING)
                     .get()
                     .await()
 
-                val produtosLoja = itensSnapshot.documents.mapNotNull { doc ->
+                itensSnapshot.documents.mapNotNull { doc ->
                     doc.toObject(Produto::class.java)
-                }
-
-                todosProdutos.addAll(produtosLoja)
+                }.also { todosProdutos.addAll(it) }
             }
 
-            Log.d(TAG, "🏪 ${todosProdutos.size} produtos no total")
             Result.success(todosProdutos)
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Erro ao listar todos produtos: ${e.message}")
             Result.failure(e)
         }
     }

@@ -93,7 +93,11 @@ fun MeusProdutosScreen(
                     result.fold(
                         onSuccess = { url ->
                             logoUrl = url
-                            viewModel.atualizarLogoLoja(nomeLoja, url)
+                            viewModel.atualizarLogoLoja(
+                                nomeLoja = nomeLoja,
+                                url = url,
+                                documentoId = loginData.documentoId
+                            )
                         },
                         onFailure = { }
                     )

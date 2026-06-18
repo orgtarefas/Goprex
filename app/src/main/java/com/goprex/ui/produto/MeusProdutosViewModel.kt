@@ -2,6 +2,7 @@ package com.goprex.ui.produto
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.FirebaseFirestore
 import com.goprex.data.model.Produto
 import com.goprex.data.repository.ProdutoRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,7 @@ data class MeusProdutosUiState(
 
 class MeusProdutosViewModel : ViewModel() {
     private val produtoRepository = ProdutoRepository()
+    private val firestore = FirebaseFirestore.getInstance()
 
     private val _uiState = MutableStateFlow(MeusProdutosUiState())
     val uiState: StateFlow<MeusProdutosUiState> = _uiState.asStateFlow()
@@ -63,7 +65,17 @@ class MeusProdutosViewModel : ViewModel() {
 
     fun togglePromocao(nomeLoja: String, produto: Produto) {
         viewModelScope.launch {
-            produtoRepository.atualizarProduto(nomeLoja, produto.id, mapOf("emPromocao" to !produto.emPromocao)).fold(
+            val dados = if (produto.emPromocao) {
+                mapOf(
+                    "emPromocao" to false,
+                    "porcentagemDesconto" to 0,
+                    "precoPromocional" to null,
+                    "dataFimPromocao" to null
+                )
+            } else {
+                mapOf("emPromocao" to true)
+            }
+            produtoRepository.atualizarProduto(nomeLoja, produto.id, dados).fold(
                 onSuccess = { carregarProdutos(nomeLoja) },
                 onFailure = { e -> _uiState.value = _uiState.value.copy(error = "Erro: ${e.message}") }
             )
@@ -72,10 +84,9 @@ class MeusProdutosViewModel : ViewModel() {
 
     fun atualizarPromocao(nomeLoja: String, produtoId: String, desconto: Int, dataFim: String) {
         viewModelScope.launch {
-            val precoPromocional = if (desconto > 0) {
-                val produto = _uiState.value.produtos.find { it.id == produtoId }
-                produto?.preco?.let { it - (it * desconto / 100.0) } ?: 0.0
-            } else null
+            val produto = _uiState.value.produtos.find { it.id == produtoId }
+            val precoOriginal = produto?.preco ?: 0.0
+            val precoPromocional = if (desconto > 0) precoOriginal - (precoOriginal * desconto / 100.0) else null
 
             val dados = mapOf(
                 "emPromocao" to (desconto > 0),
@@ -91,8 +102,26 @@ class MeusProdutosViewModel : ViewModel() {
         }
     }
 
-    fun atualizarLogoLoja(nomeLoja: String, url: String) {
+    /**
+     * Atualiza a URL da logo da loja no Firestore
+     * @param nomeLoja Nome da loja
+     * @param url URL da logo
+     * @param documentoId ID do documento do login
+     */
+    fun atualizarLogoLoja(nomeLoja: String, url: String, documentoId: String = "") {
         _uiState.value = _uiState.value.copy(logoUrl = url)
+
+        if (documentoId.isNotEmpty()) {
+            viewModelScope.launch {
+                try {
+                    firestore.collection("logins")
+                        .document(documentoId)
+                        .update("logoLoja", url)
+                } catch (e: Exception) {
+                    // Erro silencioso - a logo já está salva no estado local
+                }
+            }
+        }
     }
 
     fun limparErro() { _uiState.value = _uiState.value.copy(error = null) }

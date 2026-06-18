@@ -125,7 +125,11 @@ fun HeaderComMenu(
             delay(200)
             isLoggingOut = true
             val sp = context.getSharedPreferences("goprex_prefs", Context.MODE_PRIVATE)
-            sp.edit().clear().apply()
+
+            // Apenas marca como deslogado - MANTÉM OS DADOS
+            sp.edit().putBoolean("logado", false).apply()
+            // REMOVER: sp.edit().clear().apply()
+
             try { context.cacheDir.deleteRecursively() } catch (_: Exception) {}
             authRepository.logout()
             delay(500)
