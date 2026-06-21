@@ -81,6 +81,7 @@ fun EditarProdutoModal(
     fun salvarEdicao() {
         if (titulo.isBlank()) { error = "Título é obrigatório"; return }
         if (preco.isBlank() || preco.toDoubleOrNull() == null || preco.toDouble() <= 0) { error = "Preço inválido"; return }
+        if (categoria.isBlank()) { error = "Selecione uma categoria"; return }
 
         scope.launch {
             isLoading = true
@@ -111,7 +112,7 @@ fun EditarProdutoModal(
                     "titulo" to titulo.trim(),
                     "descricao" to descricao.trim(),
                     "preco" to preco.toDouble(),
-                    "categoria" to categoria.trim().ifBlank { "Geral" },
+                    "categoria" to categoria.trim(),
                     "imagens" to imagensFinais
                 )).fold(
                     onSuccess = { isLoading = false; isSuccess = true },
@@ -150,7 +151,12 @@ fun EditarProdutoModal(
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(value = preco, onValueChange = { preco = it.replace(",", ".").filter { c -> c.isDigit() || c == '.' } }, label = { Text("Preço *") }, singleLine = true, modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), prefix = { Text("R$ ", color = GoPrexOrange) }, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = GoPrexOrange, cursorColor = GoPrexOrange, focusedLabelColor = GoPrexOrange), shape = RoundedCornerShape(8.dp))
-                        OutlinedTextField(value = categoria, onValueChange = { categoria = it }, label = { Text("Categoria") }, singleLine = true, modifier = Modifier.weight(1f), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = GoPrexOrange, cursorColor = GoPrexOrange, focusedLabelColor = GoPrexOrange), shape = RoundedCornerShape(8.dp))
+                        CategoriaProdutoField(
+                            categoriaAtual = categoria,
+                            onCategoriaChange = { categoria = it },
+                            isError = categoria.isBlank(),
+                            modifier = Modifier.weight(1f)
+                        )
                     }
 
                     // Imagens existentes

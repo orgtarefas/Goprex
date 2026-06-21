@@ -217,21 +217,11 @@ fun CadastroProdutoScreen(
                         shape = RoundedCornerShape(8.dp)
                     )
 
-                    OutlinedTextField(
-                        value = uiState.categoria,
-                        onValueChange = { viewModel.updateCategoria(it) },
-                        label = { Text("Categoria") },
-                        placeholder = { Text("Ex: Eletrônicos") },
-                        singleLine = true,
+                    CategoriaProdutoField(
+                        categoriaAtual = uiState.categoria,
+                        onCategoriaChange = viewModel::updateCategoria,
+                        isError = uiState.camposValidados["categoria"] == false,
                         modifier = Modifier.weight(1f),
-                        leadingIcon = { Icon(Icons.Default.Category, null, tint = GoPrexOrange) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GoPrexOrange,
-                            unfocusedBorderColor = GoPrexDark.copy(alpha = 0.3f),
-                            focusedLabelColor = GoPrexOrange,
-                            cursorColor = GoPrexOrange
-                        ),
-                        shape = RoundedCornerShape(8.dp)
                     )
                 }
             }

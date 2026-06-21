@@ -97,7 +97,11 @@ class ProdutoViewModel : ViewModel() {
     }
 
     fun updateCategoria(categoria: String) {
-        _uiState.value = _uiState.value.copy(categoria = categoria)
+        _uiState.value = _uiState.value.copy(
+            categoria = categoria,
+            camposValidados = _uiState.value.camposValidados +
+                    ("categoria" to categoria.isNotBlank())
+        )
     }
 
     fun updateQuantidade(quantidade: String) {
@@ -189,6 +193,7 @@ class ProdutoViewModel : ViewModel() {
         if (state.preco.isBlank() || state.preco.toDoubleOrNull() == null || state.preco.toDouble() <= 0) {
             erros["preco"] = "Preço deve ser maior que zero"
         }
+        if (state.categoria.isBlank()) erros["categoria"] = "Selecione uma categoria"
         if (state.imagensUris.isEmpty()) erros["imagens"] = "Adicione pelo menos uma imagem"
 
         return erros
@@ -274,7 +279,7 @@ class ProdutoViewModel : ViewModel() {
                     titulo = state.titulo.trim(),
                     descricao = state.descricao.trim(),
                     preco = state.preco.toDouble(),
-                    categoria = state.categoria.trim().ifBlank { "Geral" },
+                    categoria = state.categoria.trim(),
                     cidade = cidade,
                     estado = estado,
                     imagens = urlsEnviadas,
