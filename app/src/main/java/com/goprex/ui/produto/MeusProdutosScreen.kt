@@ -30,6 +30,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.rememberAsyncImagePainter
 import com.goprex.data.model.Login
 import com.goprex.data.model.Produto
@@ -58,6 +61,7 @@ fun MeusProdutosScreen(
     val uiState by viewModel.uiState.collectAsState()
     val nomeLoja = loginData.getString("loja")
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val imgBBRepository = remember { ImgBBRepository() }
 
@@ -65,7 +69,18 @@ fun MeusProdutosScreen(
     var isUploadingLogo by remember { mutableStateOf(false) }
     var produtoDetalhe by remember { mutableStateOf<Produto?>(null) }
 
-    LaunchedEffect(nomeLoja) { viewModel.carregarProdutos(nomeLoja) }
+    DisposableEffect(lifecycleOwner, nomeLoja) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && nomeLoja.isNotBlank()) {
+                viewModel.carregarProdutos(nomeLoja)
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val logoPickerLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { selectedUri ->
