@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.goprex.data.model.Login
 import com.goprex.ui.menu.HeaderComMenu
+import com.goprex.ui.pagamento.CartoesScreen
 import com.goprex.ui.theme.GoprexTheme
 
 class tela_sistema_pagamento : ComponentActivity() {
@@ -23,11 +24,18 @@ class tela_sistema_pagamento : ComponentActivity() {
         val loginData = Login(documentoId = documentoId, dados = dadosMap)
         setContent {
             GoprexTheme {
-                HeaderComMenu(loginData = loginData, titulo = "Sistema de Pagamento", onLogout = {
-                    sharedPrefs.edit().clear().apply()
-                    startActivity(Intent(this, com.goprex.MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK })
-                    finish()
-                })
+                HeaderComMenu(
+                    loginData = loginData,
+                    titulo = "Sistema de Pagamento",
+                    onLogout = {
+                        sharedPrefs.edit().clear().apply()
+                        startActivity(Intent(this, com.goprex.MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK })
+                        finish()
+                    },
+                    conteudo = {
+                        CartoesScreen(loginData = loginData)
+                    }
+                )
             }
         }
     }

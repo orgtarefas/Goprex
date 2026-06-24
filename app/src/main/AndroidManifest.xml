@@ -62,7 +62,20 @@
         <activity android:name=".ui.telas.tela_sistema_pagamento" />
 
         <!-- Telas Cliente -->
-        <activity android:name=".ui.telas.tela_comprar" />
+        <activity
+            android:name=".ui.telas.tela_comprar"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="goprex"
+                    android:host="checkout" />
+            </intent-filter>
+        </activity>
         <activity android:name=".ui.telas.tela_minhas_compras" />
 
         <!-- Telas Entregador -->

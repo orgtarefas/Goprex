@@ -28,10 +28,14 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Pix
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Store
@@ -63,8 +67,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.core.content.ContextCompat
+import com.goprex.data.model.CreatePixPaymentResponse
 import com.google.android.gms.location.LocationServices
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -76,6 +83,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.goprex.data.model.Login
 import com.goprex.data.model.Pedido
 import com.goprex.data.model.Produto
+import com.goprex.data.model.StripeCard
 import com.goprex.data.repository.ProdutoVitrine
 import com.goprex.ui.theme.GoPrexDark
 import com.goprex.ui.theme.GoPrexOrange
@@ -111,6 +119,7 @@ fun VitrineScreen(
     var clienteLatitude by remember { mutableStateOf(0.0) }
     var clienteLongitude by remember { mutableStateOf(0.0) }
     var solicitandoLocalizacao by remember { mutableStateOf(false) }
+    var formaPagamentoSelecionada by remember { mutableStateOf(FormaPagamento.CARTAO) }
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -162,6 +171,9 @@ fun VitrineScreen(
     }
 
     LaunchedEffect(Unit) { viewModel.carregarProdutos() }
+    LaunchedEffect(loginData?.documentoId) {
+        if (loginData != null) viewModel.carregarCartoes(loginData)
+    }
 
     LaunchedEffect(uiState.checkoutUrl) {
         val url = uiState.checkoutUrl
@@ -300,7 +312,7 @@ fun VitrineScreen(
         }
     }
 
-    itemSelecionado?.let { item ->
+    if (uiState.pixPayment == null && uiState.compraCriada == null) itemSelecionado?.let { item ->
         ConfirmarCompraDialog(
             item = item,
             entrega = uiState.entregaSelecionada,
@@ -308,6 +320,15 @@ fun VitrineScreen(
             isLoading = uiState.comprando,
             clienteLocalizado = clienteLatitude != 0.0 && clienteLongitude != 0.0,
             solicitandoLocalizacao = solicitandoLocalizacao,
+            formaPagamento = formaPagamentoSelecionada,
+            errorMessage = uiState.error,
+            cartoes = uiState.cartoes,
+            cartaoSelecionadoId = uiState.cartaoSelecionadoId,
+            onFormaPagamentoChange = { formaPagamentoSelecionada = it },
+            onCartaoSelecionadoChange = viewModel::selecionarCartao,
+            onAtualizarCartoes = {
+                if (loginData != null) viewModel.carregarCartoes(loginData)
+            },
             onUsarLocalizacao = { capturarLocalizacaoCliente() },
             onDismiss = { if (!uiState.comprando) itemSelecionado = null },
             onConfirmar = {
@@ -315,6 +336,7 @@ fun VitrineScreen(
                     viewModel.comprar(
                         item = item,
                         cliente = loginData,
+                        formaPagamento = formaPagamentoSelecionada,
                         clienteLatitude = clienteLatitude,
                         clienteLongitude = clienteLongitude
                     )
@@ -324,14 +346,26 @@ fun VitrineScreen(
     }
 
     uiState.compraCriada?.let { pedido ->
-        CompraCriadaDialog(
-            pedido = pedido,
-            numberFormat = numberFormat,
-            onDismiss = {
-                itemSelecionado = null
-                viewModel.limparCompraCriada()
-            }
-        )
+        if (uiState.pixPayment != null) {
+            PixPagamentoDialog(
+                pedido = pedido,
+                pixPayment = uiState.pixPayment!!,
+                numberFormat = numberFormat,
+                onDismiss = {
+                    itemSelecionado = null
+                    viewModel.limparPixPayment()
+                }
+            )
+        } else {
+            CompraCriadaDialog(
+                pedido = pedido,
+                numberFormat = numberFormat,
+                onDismiss = {
+                    itemSelecionado = null
+                    viewModel.limparCompraCriada()
+                }
+            )
+        }
     }
 }
 
@@ -665,6 +699,13 @@ private fun ConfirmarCompraDialog(
     isLoading: Boolean,
     clienteLocalizado: Boolean,
     solicitandoLocalizacao: Boolean,
+    formaPagamento: FormaPagamento,
+    errorMessage: String?,
+    cartoes: List<StripeCard>,
+    cartaoSelecionadoId: String?,
+    onFormaPagamentoChange: (FormaPagamento) -> Unit,
+    onCartaoSelecionadoChange: (String) -> Unit,
+    onAtualizarCartoes: () -> Unit,
     onUsarLocalizacao: () -> Unit,
     onDismiss: () -> Unit,
     onConfirmar: () -> Unit
@@ -687,6 +728,42 @@ private fun ConfirmarCompraDialog(
                 Text("Produto: ${numberFormat.format(valorProduto)}")
                 Text("Taxa: ${numberFormat.format(entrega.taxa)}")
                 Text("Total: ${numberFormat.format(total)}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = GoPrexOrange)
+                Text("Forma de pagamento", fontWeight = FontWeight.Bold, color = GoPrexDark)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FormaPagamentoChip(
+                        forma = FormaPagamento.CARTAO,
+                        selected = formaPagamento == FormaPagamento.CARTAO,
+                        enabled = !isLoading,
+                        onClick = { onFormaPagamentoChange(FormaPagamento.CARTAO) }
+                    )
+                    FormaPagamentoChip(
+                        forma = FormaPagamento.PIX,
+                        selected = formaPagamento == FormaPagamento.PIX,
+                        enabled = !isLoading,
+                        onClick = { onFormaPagamentoChange(FormaPagamento.PIX) }
+                    )
+                }
+                Text(formaPagamento.descricao, fontSize = 12.sp, color = Color.Gray)
+                if (formaPagamento == FormaPagamento.CARTAO) {
+                    CartoesPagamentoSection(
+                        cartoes = cartoes,
+                        cartaoSelecionadoId = cartaoSelecionadoId,
+                        enabled = !isLoading,
+                        onCartaoSelecionadoChange = onCartaoSelecionadoChange,
+                        onAtualizarCartoes = onAtualizarCartoes
+                    )
+                }
+                if (!errorMessage.isNullOrBlank()) {
+                    Text(
+                        text = errorMessage,
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.Red.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
+                            .padding(10.dp)
+                    )
+                }
                 Button(
                     onClick = onUsarLocalizacao,
                     enabled = !isLoading && !solicitandoLocalizacao,
@@ -709,19 +786,171 @@ private fun ConfirmarCompraDialog(
         confirmButton = {
             Button(
                 onClick = onConfirmar,
-                enabled = !isLoading,
+                enabled = !isLoading && (formaPagamento != FormaPagamento.CARTAO || cartoes.isNotEmpty()),
                 colors = ButtonDefaults.buttonColors(containerColor = GoPrexOrange)
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
                 } else {
-                    Text("Comprar")
+                    Text("Ir para pagamento")
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isLoading) {
                 Text("Cancelar")
+            }
+        }
+    )
+}
+
+@Composable
+private fun FormaPagamentoChip(
+    forma: FormaPagamento,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        enabled = enabled,
+        label = { Text(forma.titulo) },
+        leadingIcon = {
+            Icon(
+                imageVector = if (forma == FormaPagamento.PIX) Icons.Filled.Pix else Icons.Filled.CreditCard,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    )
+}
+
+@Composable
+private fun CartoesPagamentoSection(
+    cartoes: List<StripeCard>,
+    cartaoSelecionadoId: String?,
+    enabled: Boolean,
+    onCartaoSelecionadoChange: (String) -> Unit,
+    onAtualizarCartoes: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Cartao para pagamento", fontWeight = FontWeight.Bold, color = GoPrexDark)
+            TextButton(onClick = onAtualizarCartoes, enabled = enabled) {
+                Text("Atualizar")
+            }
+        }
+
+        if (cartoes.isEmpty()) {
+            Text(
+                "Nenhum cartao cadastrado. Cadastre em Sistema de Pagamento e volte para comprar.",
+                fontSize = 12.sp,
+                color = Color.Red,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Red.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
+                    .padding(10.dp)
+            )
+        } else {
+            cartoes.forEach { card ->
+                FilterChip(
+                    selected = card.id == cartaoSelecionadoId,
+                    onClick = { onCartaoSelecionadoChange(card.id) },
+                    enabled = enabled,
+                    label = {
+                        Text(
+                            cardResumo(card),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Filled.CreditCard, null, modifier = Modifier.size(16.dp))
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+private fun cardResumo(card: StripeCard): String {
+    val brand = card.brand.ifBlank { "Cartao" }.replaceFirstChar { it.uppercase() }
+    val apelido = card.apelido.takeIf { it.isNotBlank() }?.let { "$it - " }.orEmpty()
+    return "$apelido$brand final ${card.last4}"
+}
+
+@Composable
+private fun PixPagamentoDialog(
+    pedido: Pedido,
+    pixPayment: CreatePixPaymentResponse,
+    numberFormat: NumberFormat,
+    onDismiss: () -> Unit
+) {
+    val clipboardManager = LocalClipboardManager.current
+    val minutos = 5
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Filled.Pix, null, tint = SuccessGreen) },
+        title = { Text("Pagar com Pix", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(pedido.produtoTitulo, fontWeight = FontWeight.Bold, color = GoPrexDark)
+                Text("Total: ${numberFormat.format(pedido.valorTotal)}", color = GoPrexOrange, fontWeight = FontWeight.Bold)
+                Text("Este Pix expira em $minutos minutos. Pague no app do seu banco usando o QR Code ou copia e cola.", fontSize = 12.sp, color = Color.Gray)
+
+                if (pixPayment.pixQrCodeUrl.isNotBlank()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = rememberAsyncImagePainter(pixPayment.pixQrCodeUrl),
+                            contentDescription = "QR Code Pix",
+                            modifier = Modifier.size(220.dp)
+                        )
+                    }
+                }
+
+                if (pixPayment.pixCopiaECola.isNotBlank()) {
+                    SelectionContainer {
+                        Text(
+                            text = pixPayment.pixCopiaECola,
+                            fontSize = 12.sp,
+                            color = GoPrexDark,
+                            maxLines = 4,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFFF1F3F5), RoundedCornerShape(8.dp))
+                                .padding(10.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    clipboardManager.setText(AnnotatedString(pixPayment.pixCopiaECola))
+                },
+                enabled = pixPayment.pixCopiaECola.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = GoPrexOrange)
+            ) {
+                Icon(Icons.Filled.ContentCopy, null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Copiar Pix")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Fechar")
             }
         }
     )
