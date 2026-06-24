@@ -1,0 +1,51 @@
+package com.goprex.data.model
+
+data class Pedido(
+    val id: String = "",
+    val clienteLogin: String = "",
+    val clienteNome: String = "",
+    val clienteCidade: String = "",
+    val clienteEstado: String = "",
+    val clienteLatitude: Double = 0.0,
+    val clienteLongitude: Double = 0.0,
+    val loja: String = "",
+    val lojaLatitude: Double = 0.0,
+    val lojaLongitude: Double = 0.0,
+    val vendedorLogin: String = "",
+    val produtoId: String = "",
+    val produtoTitulo: String = "",
+    val produtoImagem: String = "",
+    val categoria: String = "",
+    val valorProduto: Double = 0.0,
+    val prazoEntrega: String = "",
+    val minutosPrometidos: Int = 0,
+    val taxaEntrega: Double = 0.0,
+    val valorTotal: Double = 0.0,
+    val status: String = StatusPedido.AGUARDANDO_PAGAMENTO.name,
+    val pagamentoStatus: String = "PENDENTE",
+    val stripeCheckoutSessionId: String = "",
+    val stripePaymentIntentId: String = "",
+    val checkoutUrl: String = "",
+    val pagoEm: Long = 0L,
+    val entregadorLogin: String = "",
+    val entregadorNome: String = "",
+    val entregadorLatitude: Double = 0.0,
+    val entregadorLongitude: Double = 0.0,
+    val cidadeBase: String = "Salvador",
+    val estimativaMinutos: Int = 0,
+    val distanciaEstimadaKm: Double = 0.0,
+    val criadoEm: Long = System.currentTimeMillis(),
+    val aceitoEm: Long = 0L,
+    val atualizadoEm: Long = System.currentTimeMillis()
+)
+
+enum class StatusPedido(val titulo: String) {
+    AGUARDANDO_PAGAMENTO("Aguardando pagamento"),
+    AGUARDANDO_ENTREGADOR("Aguardando entregador"),
+    PAGAMENTO_RECUSADO("Pagamento recusado"),
+    ACEITO("Aceito pelo entregador"),
+    COLETANDO("Indo para a loja"),
+    EM_ROTA("Saiu para entrega"),
+    ENTREGUE("Entregue"),
+    CANCELADO("Cancelado")
+}

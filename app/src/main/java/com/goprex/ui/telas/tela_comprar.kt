@@ -30,7 +30,7 @@ class tela_comprar : ComponentActivity() {
                     titulo = "Comprar",
                     onLogout = { logout(prefs) },
                     conteudo = {
-                        VitrineScreen()
+                        VitrineScreen(loginData = loginData)
                     }
                 )
             }

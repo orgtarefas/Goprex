@@ -3,9 +3,18 @@ package com.goprex.data.repository
 import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import com.goprex.data.model.Produto
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
+
+data class ProdutoVitrine(
+    val produto: Produto = Produto(),
+    val nomeLoja: String = "",
+    val lojaLatitude: Double = 0.0,
+    val lojaLongitude: Double = 0.0,
+    val logoLoja: String = ""
+)
 
 class ProdutoRepository {
     private val firestore = FirebaseFirestore.getInstance()
@@ -23,6 +32,17 @@ class ProdutoRepository {
         return try {
             val produtoId = if (produto.id.isEmpty()) UUID.randomUUID().toString() else produto.id
             val produtoComId = produto.copy(id = produtoId)
+
+            firestore.collection("produtos")
+                .document(nomeLoja)
+                .set(
+                    mapOf(
+                        "nome" to nomeLoja,
+                        "ultimaAtualizacao" to System.currentTimeMillis()
+                    ),
+                    SetOptions.merge()
+                )
+                .await()
 
             // Salvar na subcoleção da loja
             firestore.collection("produtos")
@@ -93,25 +113,41 @@ class ProdutoRepository {
      * Lista todos os produtos de todas as lojas (para vitrine geral)
      */
     suspend fun listarTodosProdutosDisponiveis(): Result<List<Produto>> {
+        return listarProdutosVitrineDisponiveis().map { produtos ->
+            produtos.map { it.produto }
+        }
+    }
+
+    suspend fun listarProdutosVitrineDisponiveis(): Result<List<ProdutoVitrine>> {
         return try {
-            val lojasSnapshot = firestore.collection("produtos").get().await()
-            val todosProdutos = mutableListOf<Produto>()
+            val snapshot = firestore.collectionGroup("itens")
+                .get()
+                .await()
 
-            for (lojaDoc in lojasSnapshot.documents) {
-                val itensSnapshot = lojaDoc.reference
-                    .collection("itens")
-                    .whereEqualTo("disponivel", true)
-                    .orderBy("dataCriacao", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                    .get()
-                    .await()
+            val produtos = mutableListOf<ProdutoVitrine>()
 
-                itensSnapshot.documents.mapNotNull { doc ->
-                    doc.toObject(Produto::class.java)
-                }.also { todosProdutos.addAll(it) }
+            for (doc in snapshot.documents) {
+                val produto = doc.toObject(Produto::class.java) ?: continue
+                if (!produto.disponivel) continue
+                val nomeLoja = doc.reference.parent.parent?.id.orEmpty()
+                val lojaDoc = doc.reference.parent.parent?.get()?.await()
+                produtos.add(
+                    ProdutoVitrine(
+                        produto = produto,
+                        nomeLoja = nomeLoja,
+                        lojaLatitude = (lojaDoc?.get("latitude") as? Number)?.toDouble() ?: 0.0,
+                        lojaLongitude = (lojaDoc?.get("longitude") as? Number)?.toDouble() ?: 0.0,
+                        logoLoja = lojaDoc?.getString("logoLoja").orEmpty()
+                    )
+                )
             }
 
-            Result.success(todosProdutos)
+            val produtosOrdenados = produtos.sortedByDescending { it.produto.dataCriacao }
+
+            Log.d(TAG, "📦 ${produtosOrdenados.size} produtos disponíveis na vitrine")
+            Result.success(produtosOrdenados)
         } catch (e: Exception) {
+            Log.e(TAG, "❌ Erro ao listar vitrine: ${e.message}")
             Result.failure(e)
         }
     }

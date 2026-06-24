@@ -1,4 +1,18 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+
+val googleMapsApiKey: String =
+    (project.findProperty("GOOGLE_MAPS_API_KEY") as? String)
+        ?: localProperties.getProperty("GOOGLE_MAPS_API_KEY")
+        ?: System.getenv("GOOGLE_MAPS_API_KEY")
+        ?: ""
 
 plugins {
     alias(libs.plugins.android.application)
@@ -20,6 +34,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
     buildTypes {
@@ -84,6 +99,11 @@ dependencies {
 
     // Gson para parse JSON
     implementation("com.google.code.gson:gson:2.10.1")
+
+    // GPS e mapa
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("com.google.android.gms:play-services-maps:20.0.0")
+    implementation("com.google.maps.android:maps-compose:8.3.0")
 
     // Compose
     implementation(platform(libs.androidx.compose.bom))
