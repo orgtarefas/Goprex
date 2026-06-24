@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.goprex.data.model.Login
 import com.goprex.ui.menu.HeaderComMenu
+import com.goprex.ui.pagamento.CartoesUsuarioSection
 import com.goprex.ui.theme.GoPrexOrange
 import com.goprex.ui.theme.GoprexTheme
 import com.goprex.ui.theme.SurfaceWhite
@@ -152,6 +153,18 @@ fun ConteudoMeusDados(loginData: Login) {
                             }
                         }
                     }
+                }
+            }
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(2.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    CartoesUsuarioSection(loginData = loginData)
                 }
             }
         }

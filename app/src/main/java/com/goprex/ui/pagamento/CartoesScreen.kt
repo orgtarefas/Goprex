@@ -62,6 +62,40 @@ fun CartoesScreen(
     loginData: Login,
     viewModel: CartoesViewModel = viewModel()
 ) {
+    CartoesContent(
+        loginData = loginData,
+        viewModel = viewModel,
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF6F7F9))
+            .padding(16.dp),
+        showHeader = true,
+        useLazyList = true
+    )
+}
+
+@Composable
+fun CartoesUsuarioSection(
+    loginData: Login,
+    viewModel: CartoesViewModel = viewModel()
+) {
+    CartoesContent(
+        loginData = loginData,
+        viewModel = viewModel,
+        modifier = Modifier.fillMaxWidth(),
+        showHeader = false,
+        useLazyList = false
+    )
+}
+
+@Composable
+private fun CartoesContent(
+    loginData: Login,
+    viewModel: CartoesViewModel,
+    modifier: Modifier,
+    showHeader: Boolean,
+    useLazyList: Boolean
+) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -91,23 +125,36 @@ fun CartoesScreen(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF6F7F9))
-            .padding(16.dp),
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Cartoes", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = GoPrexDark)
-                Text("Cadastre ate 3 cartoes para pagar compras com mais rapidez.", fontSize = 13.sp, color = Color.Gray)
+        if (showHeader) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Cartoes", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = GoPrexDark)
+                    Text("Cadastre ate 3 cartoes para pagar compras com mais rapidez.", fontSize = 13.sp, color = Color.Gray)
+                }
+                IconButton(onClick = { viewModel.carregarCartoes(loginData) }, enabled = !uiState.isLoading) {
+                    Icon(Icons.Filled.Refresh, contentDescription = "Atualizar", tint = GoPrexDark)
+                }
             }
-            IconButton(onClick = { viewModel.carregarCartoes(loginData) }, enabled = !uiState.isLoading) {
-                Icon(Icons.Filled.Refresh, contentDescription = "Atualizar", tint = GoPrexDark)
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Formas de pagamento", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = GoPrexDark)
+                    Text("Cartoes salvos para compras na GoPrex.", fontSize = 12.sp, color = Color.Gray)
+                }
+                IconButton(onClick = { viewModel.carregarCartoes(loginData) }, enabled = !uiState.isLoading) {
+                    Icon(Icons.Filled.Refresh, contentDescription = "Atualizar", tint = GoPrexDark)
+                }
             }
         }
 
@@ -142,7 +189,7 @@ fun CartoesScreen(
         }
 
         when {
-            uiState.isLoading && uiState.cards.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            uiState.isLoading && uiState.cards.isEmpty() -> Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = GoPrexOrange)
             }
 
@@ -159,8 +206,19 @@ fun CartoesScreen(
                 }
             }
 
-            else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            useLazyList -> LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(uiState.cards, key = { it.id }) { card ->
+                    CartaoCard(
+                        card = card,
+                        enabled = !uiState.isLoading,
+                        onSalvarApelido = { apelido -> viewModel.atualizarApelido(loginData, card.id, apelido) },
+                        onRemover = { viewModel.removerCartao(loginData, card.id) }
+                    )
+                }
+            }
+
+            else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                uiState.cards.forEach { card ->
                     CartaoCard(
                         card = card,
                         enabled = !uiState.isLoading,
