@@ -3,6 +3,7 @@ package com.goprex.data.repository
 import com.goprex.data.model.CreateCheckoutSessionRequest
 import com.goprex.data.model.CreateCheckoutSessionResponse
 import com.goprex.data.model.CreateCardPaymentRequest
+import com.goprex.data.model.CreateCardSetupIntentResponse
 import com.goprex.data.model.CreateCardSetupSessionResponse
 import com.goprex.data.model.CreatePixPaymentRequest
 import com.goprex.data.model.CreatePixPaymentResponse
@@ -34,6 +35,11 @@ interface StripeApiService {
     suspend fun createCardSetupSession(
         @Body request: StripeClienteRequest
     ): CreateCardSetupSessionResponse
+
+    @POST("stripe/create-card-setup-intent")
+    suspend fun createCardSetupIntent(
+        @Body request: StripeClienteRequest
+    ): CreateCardSetupIntentResponse
 
     @POST("stripe/list-cards")
     suspend fun listCards(
@@ -82,6 +88,14 @@ class StripeRepository {
     suspend fun criarSessaoCadastroCartao(request: StripeClienteRequest): Result<CreateCardSetupSessionResponse> {
         return try {
             Result.success(api.createCardSetupSession(request))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun criarSetupIntentCartao(request: StripeClienteRequest): Result<CreateCardSetupIntentResponse> {
+        return try {
+            Result.success(api.createCardSetupIntent(request))
         } catch (e: Exception) {
             Result.failure(e)
         }

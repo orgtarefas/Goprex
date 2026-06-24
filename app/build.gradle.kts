@@ -97,6 +97,9 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
+    // Stripe SDK para cadastro e pagamento de cartoes dentro do app
+    implementation("com.stripe:stripe-android:23.11.0")
+
     // Gson para parse JSON
     implementation("com.google.code.gson:gson:2.10.1")
 

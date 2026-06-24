@@ -45,6 +45,12 @@ data class CreateCardSetupSessionResponse(
     val setupUrl: String = ""
 )
 
+data class CreateCardSetupIntentResponse(
+    val customerId: String = "",
+    val setupIntentClientSecret: String = "",
+    val publishableKey: String = ""
+)
+
 data class StripeCard(
     val id: String = "",
     val brand: String = "",

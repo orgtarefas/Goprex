@@ -8,6 +8,7 @@ import com.goprex.data.model.StripeCard
 import com.goprex.data.model.StripeClienteRequest
 import com.goprex.data.model.UpdateCardAliasRequest
 import com.goprex.data.repository.StripeRepository
+import com.stripe.android.paymentsheet.PaymentSheetResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,7 +17,8 @@ import kotlinx.coroutines.launch
 data class CartoesUiState(
     val isLoading: Boolean = false,
     val cards: List<StripeCard> = emptyList(),
-    val setupUrl: String? = null,
+    val setupIntentClientSecret: String? = null,
+    val publishableKey: String? = null,
     val error: String? = null,
     val success: String? = null
 )
@@ -51,11 +53,12 @@ class CartoesViewModel : ViewModel() {
     fun iniciarCadastroCartao(cliente: Login) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null, success = null)
-            stripeRepository.criarSessaoCadastroCartao(cliente.toStripeRequest()).fold(
+            stripeRepository.criarSetupIntentCartao(cliente.toStripeRequest()).fold(
                 onSuccess = { response ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        setupUrl = response.setupUrl,
+                        setupIntentClientSecret = response.setupIntentClientSecret,
+                        publishableKey = response.publishableKey,
                         error = null
                     )
                 },
@@ -66,6 +69,32 @@ class CartoesViewModel : ViewModel() {
                     )
                 }
             )
+        }
+    }
+
+    fun processarResultadoCadastro(cliente: Login, result: PaymentSheetResult) {
+        when (result) {
+            is PaymentSheetResult.Completed -> {
+                _uiState.value = _uiState.value.copy(
+                    setupIntentClientSecret = null,
+                    success = "Cartao cadastrado",
+                    error = null
+                )
+                carregarCartoes(cliente)
+            }
+            is PaymentSheetResult.Canceled -> {
+                _uiState.value = _uiState.value.copy(
+                    setupIntentClientSecret = null,
+                    isLoading = false
+                )
+            }
+            is PaymentSheetResult.Failed -> {
+                _uiState.value = _uiState.value.copy(
+                    setupIntentClientSecret = null,
+                    isLoading = false,
+                    error = result.error.localizedMessage ?: "Erro ao cadastrar cartao"
+                )
+            }
         }
     }
 
@@ -118,8 +147,8 @@ class CartoesViewModel : ViewModel() {
         }
     }
 
-    fun limparSetupUrl() {
-        _uiState.value = _uiState.value.copy(setupUrl = null)
+    fun limparSetupIntent() {
+        _uiState.value = _uiState.value.copy(setupIntentClientSecret = null)
     }
 
     private fun Login.toStripeRequest(): StripeClienteRequest {

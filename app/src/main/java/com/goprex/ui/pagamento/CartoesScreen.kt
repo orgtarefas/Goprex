@@ -1,7 +1,5 @@
 package com.goprex.ui.pagamento
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -56,6 +54,9 @@ import com.goprex.data.model.StripeCard
 import com.goprex.ui.theme.GoPrexDark
 import com.goprex.ui.theme.GoPrexOrange
 import com.goprex.ui.theme.SuccessGreen
+import com.stripe.android.PaymentConfiguration
+import com.stripe.android.paymentsheet.PaymentSheet
+import com.stripe.android.paymentsheet.rememberPaymentSheet
 
 @Composable
 fun CartoesScreen(
@@ -99,6 +100,9 @@ private fun CartoesContent(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val paymentSheet = rememberPaymentSheet { result ->
+        viewModel.processarResultadoCadastro(loginData, result)
+    }
 
     LaunchedEffect(loginData.documentoId) {
         viewModel.carregarCartoes(loginData)
@@ -114,13 +118,18 @@ private fun CartoesContent(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(uiState.setupUrl) {
-        val url = uiState.setupUrl
-        if (!url.isNullOrBlank()) {
-            runCatching {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-            }
-            viewModel.limparSetupUrl()
+    LaunchedEffect(uiState.setupIntentClientSecret, uiState.publishableKey) {
+        val clientSecret = uiState.setupIntentClientSecret
+        val publishableKey = uiState.publishableKey
+        if (!clientSecret.isNullOrBlank() && !publishableKey.isNullOrBlank()) {
+            PaymentConfiguration.init(context.applicationContext, publishableKey)
+            paymentSheet.presentWithSetupIntent(
+                setupIntentClientSecret = clientSecret,
+                configuration = PaymentSheet.Configuration(
+                    merchantDisplayName = "GoPrex"
+                )
+            )
+            viewModel.limparSetupIntent()
         }
     }
 
