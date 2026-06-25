@@ -99,19 +99,38 @@ fun MinhasEntregasScreen(
     }
 
     val nf = NumberFormat.getCurrencyInstance(Locale("pt", "BR"))
+    val quaseLiberadas = uiState.disponiveis.filter { it.status == StatusPedido.PRODUTO_EM_PREPARACAO.name }
+    val liberadas = uiState.disponiveis.filter { it.status == StatusPedido.PRODUTO_LIBERADO_ENTREGA.name }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(Color(0xFFF6F7F9)),
         contentPadding = PaddingValues(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item { TituloSecao("Entregas disponiveis", "${uiState.disponiveis.size} aguardando aceite") }
+        item { TituloSecao("Quase liberadas", "${quaseLiberadas.size} em preparacao") }
         if (uiState.isLoading) {
             item { LoadingBox() }
-        } else if (uiState.disponiveis.isEmpty()) {
+        } else if (quaseLiberadas.isEmpty()) {
+            item { EmptyBox("Nenhuma entrega em preparacao agora") }
+        } else {
+            items(quaseLiberadas, key = { "pre_${it.id}" }) { pedido ->
+                PedidoCard(
+                    pedido = pedido,
+                    numberFormat = nf,
+                    action = {
+                        Text("Produto sendo preparado. Dirija-se ao estabelecimento e aguarde a liberacao.", fontSize = 12.sp, color = GoPrexOrange, fontWeight = FontWeight.Bold)
+                    }
+                )
+            }
+        }
+
+        item { TituloSecao("Entregas disponiveis", "${liberadas.size} aguardando aceite") }
+        if (uiState.isLoading) {
+            item { LoadingBox() }
+        } else if (liberadas.isEmpty()) {
             item { EmptyBox("Nenhuma entrega disponivel agora") }
         } else {
-            items(uiState.disponiveis, key = { it.id }) { pedido ->
+            items(liberadas, key = { it.id }) { pedido ->
                 PedidoCard(
                     pedido = pedido,
                     numberFormat = nf,
@@ -141,6 +160,45 @@ fun MinhasEntregasScreen(
                             pedido = pedido,
                             onStatus = { status -> viewModel.atualizarStatus(pedido.id, status, loginData.documentoId) }
                         )
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun VendasScreen(
+    loginData: Login,
+    viewModel: PedidosViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val nf = NumberFormat.getCurrencyInstance(Locale("pt", "BR"))
+    LaunchedEffect(loginData.documentoId) { viewModel.carregarVendas(loginData.documentoId) }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().background(Color(0xFFF6F7F9)),
+        contentPadding = PaddingValues(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item { TituloSecao("Vendas", "${uiState.pedidos.size} pedido(s)") }
+        when {
+            uiState.isLoading -> item { LoadingBox() }
+            uiState.pedidos.isEmpty() -> item { EmptyBox("Nenhuma venda recebida") }
+            else -> items(uiState.pedidos, key = { it.id }) { pedido ->
+                PedidoCard(
+                    pedido = pedido,
+                    numberFormat = nf,
+                    action = {
+                        if (pedido.status == StatusPedido.PRODUTO_EM_PREPARACAO.name) {
+                            Button(
+                                onClick = { viewModel.liberarProdutoParaEntrega(pedido.id, loginData.documentoId) },
+                                colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Liberar para entrega")
+                            }
+                        }
                     }
                 )
             }

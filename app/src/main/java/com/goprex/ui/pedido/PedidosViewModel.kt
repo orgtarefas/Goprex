@@ -24,6 +24,7 @@ data class PedidosUiState(
 class PedidosViewModel : ViewModel() {
     private val repository = PedidoRepository()
     private var comprasJob: Job? = null
+    private var vendasJob: Job? = null
     private var entregasJob: Job? = null
     private var gestaoJob: Job? = null
 
@@ -58,6 +59,25 @@ class PedidosViewModel : ViewModel() {
                         isLoading = false
                     )
                 }
+        }
+    }
+
+    fun carregarVendas(vendedorLogin: String) {
+        vendasJob?.cancel()
+        _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+        vendasJob = viewModelScope.launch {
+            repository.observarVendasVendedor(vendedorLogin)
+                .catch { e -> _uiState.value = _uiState.value.copy(isLoading = false, error = e.message) }
+                .collect { pedidos ->
+                    _uiState.value = _uiState.value.copy(pedidos = pedidos, isLoading = false)
+                }
+        }
+    }
+
+    fun liberarProdutoParaEntrega(pedidoId: String, vendedorLogin: String) {
+        viewModelScope.launch {
+            repository.atualizarStatus(pedidoId, StatusPedido.PRODUTO_LIBERADO_ENTREGA)
+            carregarVendas(vendedorLogin)
         }
     }
 

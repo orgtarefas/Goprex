@@ -84,6 +84,10 @@ class PedidoRepository {
         return observarPorCampo("clienteLogin", clienteLogin)
     }
 
+    fun observarVendasVendedor(vendedorLogin: String): Flow<List<Pedido>> {
+        return observarPorCampo("vendedorLogin", vendedorLogin)
+    }
+
     suspend fun listarEntregasDoEntregador(entregadorLogin: String): Result<List<Pedido>> {
         return listarPorCampo("entregadorLogin", entregadorLogin)
     }
@@ -107,7 +111,13 @@ class PedidoRepository {
 
     fun observarEntregasDisponiveis(): Flow<List<Pedido>> = callbackFlow {
         val registration = pedidos
-            .whereEqualTo("status", StatusPedido.PRODUTO_LIBERADO_ENTREGA.name)
+            .whereIn(
+                "status",
+                listOf(
+                    StatusPedido.PRODUTO_EM_PREPARACAO.name,
+                    StatusPedido.PRODUTO_LIBERADO_ENTREGA.name
+                )
+            )
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
