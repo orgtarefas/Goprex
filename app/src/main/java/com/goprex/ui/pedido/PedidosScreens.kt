@@ -159,7 +159,10 @@ fun GestaoEntregasScreen(
         titulo = "Gestao de Entregas",
         pedidos = uiState.pedidos,
         isLoading = uiState.isLoading,
-        emptyText = "Nenhum pedido no sistema"
+        emptyText = "Nenhum pedido no sistema",
+        actionFactory = { pedido ->
+            { ProximaAcaoGestao(pedido = pedido, onStatus = { status -> viewModel.atualizarStatusGestao(pedido.id, status) }) }
+        }
     )
 }
 
@@ -174,7 +177,10 @@ fun GestaoComprasScreen(
         titulo = "Gestao de Compras",
         pedidos = uiState.pedidos,
         isLoading = uiState.isLoading,
-        emptyText = "Nenhuma compra no sistema"
+        emptyText = "Nenhuma compra no sistema",
+        actionFactory = { pedido ->
+            { ProximaAcaoGestao(pedido = pedido, onStatus = { status -> viewModel.atualizarStatusGestao(pedido.id, status) }) }
+        }
     )
 }
 
@@ -183,7 +189,8 @@ private fun PedidosList(
     titulo: String,
     pedidos: List<Pedido>,
     isLoading: Boolean,
-    emptyText: String
+    emptyText: String,
+    actionFactory: ((Pedido) -> @Composable () -> Unit)? = null
 ) {
     val nf = NumberFormat.getCurrencyInstance(Locale("pt", "BR"))
     LazyColumn(
@@ -196,7 +203,7 @@ private fun PedidosList(
             isLoading -> item { LoadingBox() }
             pedidos.isEmpty() -> item { EmptyBox(emptyText) }
             else -> items(pedidos, key = { it.id }) { pedido ->
-                PedidoCard(pedido = pedido, numberFormat = nf)
+                PedidoCard(pedido = pedido, numberFormat = nf, action = actionFactory?.invoke(pedido))
             }
         }
     }
@@ -240,6 +247,7 @@ private fun PedidoCard(
                     Text(pedido.loja, fontSize = 12.sp, color = Color.Gray, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 StatusChip(pedido.status)
+                PedidoTimeline(pedido)
                 Text("Entrega ${pedido.prazoEntrega} • taxa ${numberFormat.format(pedido.taxaEntrega)}", fontSize = 12.sp, color = SuccessGreen)
                 Text("Total ${numberFormat.format(pedido.valorTotal)}", fontWeight = FontWeight.Bold, color = GoPrexOrange)
                 Text("Estimativa: ${pedido.estimativaMinutos} min • ${String.format(Locale("pt", "BR"), "%.1f", pedido.distanciaEstimadaKm)} km em Salvador", fontSize = 11.sp, color = Color.Gray)
@@ -283,9 +291,33 @@ private fun ProximaAcaoEntrega(
 ) {
     val status = runCatching { StatusPedido.valueOf(pedido.status) }.getOrDefault(StatusPedido.AGUARDANDO_ENTREGADOR)
     val proximo = when (status) {
+        StatusPedido.PRODUTO_LIBERADO_ENTREGA -> StatusPedido.ACEITO
         StatusPedido.ACEITO -> StatusPedido.COLETANDO
         StatusPedido.COLETANDO -> StatusPedido.EM_ROTA
         StatusPedido.EM_ROTA -> StatusPedido.ENTREGUE
+        else -> null
+    }
+
+    if (proximo != null) {
+        Button(
+            onClick = { onStatus(proximo) },
+            colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Text(proximo.titulo)
+        }
+    }
+}
+
+@Composable
+private fun ProximaAcaoGestao(
+    pedido: Pedido,
+    onStatus: (StatusPedido) -> Unit
+) {
+    val status = runCatching { StatusPedido.valueOf(pedido.status) }.getOrDefault(StatusPedido.AGUARDANDO_PAGAMENTO)
+    val proximo = when (status) {
+        StatusPedido.PRODUTO_EM_PREPARACAO -> StatusPedido.PRODUTO_LIBERADO_ENTREGA
+        StatusPedido.PRODUTO_LIBERADO_ENTREGA -> StatusPedido.EM_ROTA
         else -> null
     }
 
@@ -306,7 +338,9 @@ private fun StatusChip(statusName: String) {
     val color = when (status) {
         StatusPedido.ENTREGUE -> SuccessGreen
         StatusPedido.CANCELADO -> Color.Red
-        StatusPedido.AGUARDANDO_ENTREGADOR -> GoPrexOrange
+        StatusPedido.AGUARDANDO_ENTREGADOR,
+        StatusPedido.PRODUTO_EM_PREPARACAO,
+        StatusPedido.PRODUTO_LIBERADO_ENTREGA -> GoPrexOrange
         else -> GoPrexDark
     }
 
@@ -316,6 +350,56 @@ private fun StatusChip(statusName: String) {
             Spacer(modifier = Modifier.width(4.dp))
             Text(status.titulo, color = color, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
+    }
+}
+
+@Composable
+private fun PedidoTimeline(pedido: Pedido) {
+    val etapaAtual = etapaAtualPedido(pedido)
+    val etapas = listOf(
+        "Aguardando Pagamento",
+        "Pagamento Aprovado",
+        "Produto em Preparacao",
+        "Produto liberado para Entrega",
+        "Produto em rota de Entrega",
+        "Produto Entregue"
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        etapas.forEachIndexed { index, etapa ->
+            val concluida = index <= etapaAtual
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    color = if (concluida) SuccessGreen else Color.Gray.copy(alpha = 0.35f),
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Box(modifier = Modifier.size(10.dp))
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    etapa,
+                    fontSize = 11.sp,
+                    color = if (concluida) GoPrexDark else Color.Gray,
+                    fontWeight = if (index == etapaAtual) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+        }
+    }
+}
+
+private fun etapaAtualPedido(pedido: Pedido): Int {
+    val status = runCatching { StatusPedido.valueOf(pedido.status) }.getOrDefault(StatusPedido.AGUARDANDO_PAGAMENTO)
+    return when {
+        pedido.pagamentoStatus != "PAGO" -> 0
+        status == StatusPedido.AGUARDANDO_PAGAMENTO -> 1
+        status == StatusPedido.PRODUTO_EM_PREPARACAO -> 2
+        status == StatusPedido.PRODUTO_LIBERADO_ENTREGA ||
+                status == StatusPedido.AGUARDANDO_ENTREGADOR ||
+                status == StatusPedido.ACEITO ||
+                status == StatusPedido.COLETANDO -> 3
+        status == StatusPedido.EM_ROTA -> 4
+        status == StatusPedido.ENTREGUE -> 5
+        else -> 1
     }
 }
 

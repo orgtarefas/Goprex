@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goprex.data.model.Login
 import com.goprex.data.model.Pedido
+import com.goprex.data.model.StatusPedido
 import com.goprex.data.model.CreateCardPaymentRequest
 import com.goprex.data.model.CreateCheckoutSessionRequest
 import com.goprex.data.model.CreatePixPaymentRequest
@@ -281,13 +282,19 @@ class VitrineViewModel : ViewModel() {
                 if (response.status == "succeeded") {
                     _uiState.value = _uiState.value.copy(
                         comprando = false,
-                        compraCriada = pedido,
+                        compraCriada = pedido.copy(
+                            status = StatusPedido.PRODUTO_EM_PREPARACAO.name,
+                            pagamentoStatus = "PAGO"
+                        ),
                         error = null
                     )
                 } else {
                     _uiState.value = _uiState.value.copy(
                         comprando = false,
-                        compraCriada = pedido,
+                        compraCriada = pedido.copy(
+                            status = StatusPedido.AGUARDANDO_PAGAMENTO.name,
+                            pagamentoStatus = "PROCESSANDO"
+                        ),
                         error = "Pagamento com cartao em processamento: ${response.status}"
                     )
                 }
@@ -295,6 +302,10 @@ class VitrineViewModel : ViewModel() {
             onFailure = { e ->
                 _uiState.value = _uiState.value.copy(
                     comprando = false,
+                    compraCriada = pedido.copy(
+                        status = StatusPedido.PAGAMENTO_RECUSADO.name,
+                        pagamentoStatus = "RECUSADO"
+                    ),
                     error = e.message ?: "Erro ao cobrar cartao"
                 )
             }

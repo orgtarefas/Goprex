@@ -5,26 +5,58 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.goprex.data.model.Login
+import com.goprex.data.model.Pedido
+import com.goprex.data.model.StatusPedido
 import com.goprex.ui.menu.HeaderComMenu
 import com.goprex.ui.pagamento.CartoesUsuarioSection
+import com.goprex.ui.pedido.PedidosViewModel
 import com.goprex.ui.theme.GoPrexOrange
 import com.goprex.ui.theme.GoprexTheme
 import com.goprex.ui.theme.SurfaceWhite
 import com.goprex.ui.theme.TextPrimary
 import com.goprex.ui.theme.TextSecondary
+import java.text.NumberFormat
+import java.util.Locale
 
 class tela_home_meus_dados : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,9 +81,7 @@ class tela_home_meus_dados : ComponentActivity() {
                         startActivity(Intent(this, com.goprex.MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK })
                         finish()
                     },
-                    conteudo = {
-                        ConteudoMeusDados(loginData)
-                    }
+                    conteudo = { ConteudoMeusDados(loginData) }
                 )
             }
         }
@@ -62,113 +92,155 @@ class tela_home_meus_dados : ComponentActivity() {
 fun ConteudoMeusDados(loginData: Login) {
     val dados = loginData.getDados()
     val nome = dados["nome"]?.toString() ?: ""
+    var abaSelecionada by remember { mutableStateOf(0) }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item { BoasVindasCard(nome) }
+        item {
+            TabRow(selectedTabIndex = abaSelecionada) {
+                Tab(selected = abaSelecionada == 0, onClick = { abaSelecionada = 0 }, text = { Text("Cadastro") })
+                Tab(selected = abaSelecionada == 1, onClick = { abaSelecionada = 1 }, text = { Text("Pagamentos") })
+            }
+        }
+
+        if (abaSelecionada == 0) {
+            item { DadosCadastroCard(loginData) }
+        } else {
+            item { CartoesCard(loginData) }
+            item { TransacoesUsuarioSection(loginData = loginData) }
+        }
+
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun BoasVindasCard(nome: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Ola, ${nome.split(" ").firstOrNull() ?: "Usuario"}!", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Bem-vindo a GoPrex", color = TextSecondary, fontSize = 14.sp)
+            }
+            Icon(Icons.Default.Star, null, tint = GoPrexOrange, modifier = Modifier.size(36.dp))
+        }
+    }
+}
+
+@Composable
+private fun DadosCadastroCard(loginData: Login) {
+    val dados = loginData.getDados()
+    val nome = dados["nome"]?.toString() ?: ""
     val descricaoPerfil = dados["descricaoPerfil"]?.toString() ?: dados["perfil"]?.toString() ?: ""
     val loja = dados["loja"]?.toString() ?: ""
     val cidade = dados["cidade"]?.toString() ?: ""
     val estado = dados["estado"]?.toString() ?: ""
     val telefone = (dados["telefone"] as? Number)?.toLong() ?: 0L
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceWhite), elevation = CardDefaults.cardElevation(2.dp)
-            ) {
-                Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Olá, ${nome.split(" ").firstOrNull() ?: "Usuário"}!", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("Bem-vindo à GoPrex", color = TextSecondary, fontSize = 14.sp)
-                    }
-                    Icon(Icons.Default.Star, null, tint = GoPrexOrange, modifier = Modifier.size(36.dp))
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text("Meus Dados", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary)
+            if (nome.isNotEmpty()) DadoLinha(Icons.Default.Person, "Nome", nome)
+            if (descricaoPerfil.isNotEmpty()) DadoLinha(Icons.Default.Star, "Perfil", descricaoPerfil)
+            if (loja.isNotEmpty()) DadoLinha(Icons.Default.ShoppingCart, "Loja", loja)
+            if (cidade.isNotEmpty() || estado.isNotEmpty()) {
+                DadoLinha(Icons.Default.LocationOn, "Localizacao", listOfNotNull(cidade.takeIf { it.isNotEmpty() }, estado.takeIf { it.isNotEmpty() }).joinToString(" / "))
+            }
+            if (telefone > 0) DadoLinha(Icons.Default.Phone, "Telefone", formatPhone(telefone))
+        }
+    }
+}
+
+@Composable
+private fun DadoLinha(icon: androidx.compose.ui.graphics.vector.ImageVector, titulo: String, valor: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = GoPrexOrange, modifier = Modifier.size(22.dp))
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(titulo, fontSize = 11.sp, color = TextSecondary)
+            Text(valor, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+        }
+    }
+}
+
+@Composable
+private fun CartoesCard(loginData: Login) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            CartoesUsuarioSection(loginData = loginData)
+        }
+    }
+}
+
+@Composable
+private fun TransacoesUsuarioSection(
+    loginData: Login,
+    viewModel: PedidosViewModel = viewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val nf = remember { NumberFormat.getCurrencyInstance(Locale("pt", "BR")) }
+
+    LaunchedEffect(loginData.documentoId) {
+        viewModel.carregarCompras(loginData.documentoId)
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Historico de transacoes", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary)
+            when {
+                uiState.isLoading -> CircularProgressIndicator(color = GoPrexOrange)
+                uiState.pedidos.isEmpty() -> Text("Nenhuma transacao encontrada", color = TextSecondary, fontSize = 13.sp)
+                else -> uiState.pedidos.take(10).forEach { pedido ->
+                    TransacaoResumo(pedido = pedido, total = nf.format(pedido.valorTotal))
                 }
             }
         }
+    }
+}
 
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
-                shape = RoundedCornerShape(16.dp), elevation = CardDefaults.cardElevation(2.dp)
-            ) {
-                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("Meus Dados", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary)
-
-                    if (nome.isNotEmpty()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Person, null, tint = GoPrexOrange, modifier = Modifier.size(22.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("Nome", fontSize = 11.sp, color = TextSecondary)
-                                Text(nome, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
-                            }
-                        }
-                    }
-
-                    if (descricaoPerfil.isNotEmpty()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Star, null, tint = GoPrexOrange, modifier = Modifier.size(22.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("Perfil", fontSize = 11.sp, color = TextSecondary)
-                                Text(descricaoPerfil, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
-                            }
-                        }
-                    }
-
-                    if (loja.isNotEmpty()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.ShoppingCart, null, tint = GoPrexOrange, modifier = Modifier.size(22.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("Loja", fontSize = 11.sp, color = TextSecondary)
-                                Text(loja, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
-                            }
-                        }
-                    }
-
-                    if (cidade.isNotEmpty() || estado.isNotEmpty()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.LocationOn, null, tint = GoPrexOrange, modifier = Modifier.size(22.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("Localização", fontSize = 11.sp, color = TextSecondary)
-                                Text(
-                                    listOfNotNull(cidade.takeIf { it.isNotEmpty() }, estado.takeIf { it.isNotEmpty() }).joinToString(" / "),
-                                    fontSize = 15.sp, fontWeight = FontWeight.Medium, color = TextPrimary
-                                )
-                            }
-                        }
-                    }
-
-                    if (telefone > 0) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Phone, null, tint = GoPrexOrange, modifier = Modifier.size(22.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text("Telefone", fontSize = 11.sp, color = TextSecondary)
-                                Text(formatPhone(telefone), fontSize = 15.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
-                            }
-                        }
-                    }
-                }
-            }
+@Composable
+private fun TransacaoResumo(pedido: Pedido, total: String) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Default.Receipt, null, tint = GoPrexOrange, modifier = Modifier.size(24.dp))
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(pedido.produtoTitulo, color = TextPrimary, fontWeight = FontWeight.Medium, maxLines = 1)
+            Text("${pedido.loja} - ${statusPagamentoResumo(pedido)}", color = TextSecondary, fontSize = 12.sp)
         }
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(2.dp)
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    CartoesUsuarioSection(loginData = loginData)
-                }
-            }
-        }
-        item { Spacer(modifier = Modifier.height(16.dp)) }
+        Text(total, color = GoPrexOrange, fontWeight = FontWeight.Bold)
+    }
+}
+
+private fun statusPagamentoResumo(pedido: Pedido): String {
+    return when {
+        pedido.pagamentoStatus == "PAGO" -> "Pagamento aprovado"
+        pedido.pagamentoStatus == "RECUSADO" -> "Pagamento recusado"
+        pedido.status == StatusPedido.AGUARDANDO_PAGAMENTO.name -> "Aguardando pagamento"
+        else -> pedido.pagamentoStatus.ifBlank { "Pendente" }
     }
 }
 

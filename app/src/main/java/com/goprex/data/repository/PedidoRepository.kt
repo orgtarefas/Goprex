@@ -95,7 +95,7 @@ class PedidoRepository {
     suspend fun listarEntregasDisponiveis(): Result<List<Pedido>> {
         return try {
             val snapshot = pedidos
-                .whereEqualTo("status", StatusPedido.AGUARDANDO_ENTREGADOR.name)
+                .whereEqualTo("status", StatusPedido.PRODUTO_LIBERADO_ENTREGA.name)
                 .get()
                 .await()
 
@@ -107,7 +107,7 @@ class PedidoRepository {
 
     fun observarEntregasDisponiveis(): Flow<List<Pedido>> = callbackFlow {
         val registration = pedidos
-            .whereEqualTo("status", StatusPedido.AGUARDANDO_ENTREGADOR.name)
+            .whereEqualTo("status", StatusPedido.PRODUTO_LIBERADO_ENTREGA.name)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)

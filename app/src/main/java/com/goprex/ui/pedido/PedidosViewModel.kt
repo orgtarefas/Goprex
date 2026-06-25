@@ -87,6 +87,13 @@ class PedidosViewModel : ViewModel() {
         }
     }
 
+    fun atualizarStatusGestao(pedidoId: String, status: StatusPedido) {
+        viewModelScope.launch {
+            repository.atualizarStatus(pedidoId, status)
+            carregarGestao()
+        }
+    }
+
     fun atualizarLocalizacaoAtiva(pedidos: List<Pedido>, latitude: Double, longitude: Double) {
         val ativos = pedidos.filter { pedido ->
             pedido.status in setOf(

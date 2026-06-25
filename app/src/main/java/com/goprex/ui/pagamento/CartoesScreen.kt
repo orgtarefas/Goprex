@@ -35,8 +35,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -247,8 +248,8 @@ private fun CartaoCard(
     onSalvarApelido: (String) -> Unit,
     onRemover: () -> Unit
 ) {
-    val apelidos = remember { mutableStateMapOf<String, String>() }
-    val apelidoAtual = apelidos.getOrPut(card.id) { card.apelido }
+    var editando by remember(card.id) { mutableStateOf(false) }
+    var apelidoEditado by remember(card.id, card.apelido) { mutableStateOf(card.apelido) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -268,27 +269,38 @@ private fun CartaoCard(
                 }
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = apelidoAtual,
-                    onValueChange = { apelidos[card.id] = it },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    enabled = enabled,
-                    label = { Text("Apelido opcional") }
-                )
-                Button(
-                    onClick = { onSalvarApelido(apelidos[card.id].orEmpty()) },
-                    enabled = enabled,
-                    colors = ButtonDefaults.buttonColors(containerColor = GoPrexDark),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(Icons.Filled.Save, null, modifier = Modifier.size(18.dp))
+            if (editando) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = apelidoEditado,
+                        onValueChange = { apelidoEditado = it },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        enabled = enabled,
+                        label = { Text("Apelido do cartao") }
+                    )
+                    Button(
+                        onClick = {
+                            onSalvarApelido(apelidoEditado)
+                            editando = false
+                        },
+                        enabled = enabled,
+                        colors = ButtonDefaults.buttonColors(containerColor = GoPrexDark),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Filled.Save, null, modifier = Modifier.size(18.dp))
+                    }
                 }
-            }
-
-            TextButton(onClick = onRemover, enabled = enabled) {
-                Text("Remover cartao", color = Color.Red)
+            } else {
+                Text("Dados do cartao nao podem ser editados apos validacao. Apenas o apelido pode ser alterado.", fontSize = 12.sp, color = Color.Gray)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = { editando = true }, enabled = enabled) {
+                        Text("Editar apelido")
+                    }
+                    TextButton(onClick = onRemover, enabled = enabled) {
+                        Text("Remover", color = Color.Red)
+                    }
+                }
             }
         }
     }

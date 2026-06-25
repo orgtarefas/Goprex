@@ -41,6 +41,8 @@ data class Pedido(
 
 enum class StatusPedido(val titulo: String) {
     AGUARDANDO_PAGAMENTO("Aguardando pagamento"),
+    PRODUTO_EM_PREPARACAO("Produto em preparacao"),
+    PRODUTO_LIBERADO_ENTREGA("Produto liberado para entrega"),
     AGUARDANDO_ENTREGADOR("Aguardando entregador"),
     PAGAMENTO_RECUSADO("Pagamento recusado"),
     ACEITO("Aceito pelo entregador"),

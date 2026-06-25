@@ -360,6 +360,7 @@ fun VitrineScreen(
             CompraCriadaDialog(
                 pedido = pedido,
                 numberFormat = numberFormat,
+                errorMessage = uiState.error,
                 onDismiss = {
                     itemSelecionado = null
                     viewModel.limparCompraCriada()
@@ -960,19 +961,40 @@ private fun PixPagamentoDialog(
 private fun CompraCriadaDialog(
     pedido: Pedido,
     numberFormat: NumberFormat,
+    errorMessage: String?,
     onDismiss: () -> Unit
 ) {
+    val pagamentoAprovado = pedido.pagamentoStatus == "PAGO"
+    val pagamentoRecusado = pedido.pagamentoStatus == "RECUSADO"
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Filled.ShoppingBag, null, tint = SuccessGreen) },
-        title = { Text("Pedido criado", fontWeight = FontWeight.Bold) },
+        icon = { Icon(Icons.Filled.ShoppingBag, null, tint = if (pagamentoRecusado) Color.Red else SuccessGreen) },
+        title = {
+            Text(
+                when {
+                    pagamentoAprovado -> "Pagamento aprovado"
+                    pagamentoRecusado -> "Erro no pagamento"
+                    else -> "Pedido criado"
+                },
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(pedido.produtoTitulo, fontWeight = FontWeight.Bold)
-                Text("Status: aguardando pagamento")
                 Text("Prazo: ${pedido.prazoEntrega}")
                 Text("Total: ${numberFormat.format(pedido.valorTotal)}", color = GoPrexOrange, fontWeight = FontWeight.Bold)
-                Text("Finalize o pagamento no Stripe. Depois acompanhe em Minhas Compras.", fontSize = 12.sp, color = Color.Gray)
+                if (pagamentoRecusado) {
+                    Text(errorMessage ?: "O pagamento foi recusado. Confira o cartao ou tente outra forma de pagamento.", color = Color.Red, fontSize = 12.sp)
+                } else {
+                    Text(if (pagamentoAprovado) "Status: Pagamento Aprovado" else "Status: Aguardando Pagamento", color = if (pagamentoAprovado) SuccessGreen else GoPrexOrange, fontWeight = FontWeight.Bold)
+                    Text("Proximos passos:", fontWeight = FontWeight.Bold, color = GoPrexDark)
+                    Text("1. Produto em Preparacao", fontSize = 12.sp, color = Color.Gray)
+                    Text("2. Produto liberado para Entrega", fontSize = 12.sp, color = Color.Gray)
+                    Text("3. Produto em rota de Entrega", fontSize = 12.sp, color = Color.Gray)
+                    Text("4. Produto Entregue", fontSize = 12.sp, color = Color.Gray)
+                    Text("Acompanhe a evolucao em Minhas Compras.", fontSize = 12.sp, color = Color.Gray)
+                }
             }
         },
         confirmButton = {
