@@ -223,28 +223,22 @@ class VitrineViewModel : ViewModel() {
             }
             _uiState.value = _uiState.value.copy(comprando = true, error = null, compraCriada = null)
 
-            pedidoRepository.criarPedido(
+            val pedido = pedidoRepository.montarPedido(
                 item = item,
                 cliente = cliente,
                 entrega = entrega,
                 enderecoEntrega = enderecoEntrega,
                 clienteLatitudeAtual = clienteLatitude,
                 clienteLongitudeAtual = clienteLongitude
-            ).fold(
-                onSuccess = { pedido ->
-                    if (formaPagamento == FormaPagamento.PIX) {
-                        criarPix(pedido, cliente)
-                    } else {
-                        criarPagamentoCartaoNoApp(pedido, cliente)
-                    }
-                },
-                onFailure = { e ->
-                    _uiState.value = _uiState.value.copy(
-                        comprando = false,
-                        error = e.message ?: "Erro ao criar pedido"
-                    )
-                }
             )
+            if (formaPagamento == FormaPagamento.PIX) {
+                _uiState.value = _uiState.value.copy(
+                    comprando = false,
+                    error = "Pix indisponivel no momento"
+                )
+            } else {
+                criarPagamentoCartaoNoApp(pedido, cliente)
+            }
         }
     }
 
@@ -338,12 +332,6 @@ class VitrineViewModel : ViewModel() {
                         error = "Pagamento iniciado sem dados para abrir o formulario no app"
                     )
                 } else {
-                    pedidoRepository.atualizarPagamento(
-                        pedidoId = pedido.id,
-                        status = StatusPedido.AGUARDANDO_PAGAMENTO,
-                        pagamentoStatus = "PENDENTE",
-                        stripePaymentIntentId = response.paymentIntentId
-                    )
                     _uiState.value = _uiState.value.copy(
                         comprando = false,
                         compraCriada = null,
@@ -374,24 +362,29 @@ class VitrineViewModel : ViewModel() {
                         pagamentoStatus = "PAGO",
                         pagoEm = System.currentTimeMillis()
                     )
+                    _uiState.value = _uiState.value.copy(comprando = true, error = null)
                     viewModelScope.launch {
-                        pedidoRepository.atualizarPagamento(
-                            pedidoId = pedido.id,
-                            status = StatusPedido.PRODUTO_EM_PREPARACAO,
-                            pagamentoStatus = "PAGO",
-                            stripePaymentIntentId = pedido.stripePaymentIntentId,
-                            pagoEm = pedidoPago.pagoEm
+                        pedidoRepository.salvarPedidoPago(pedidoPago).fold(
+                            onSuccess = {
+                                _uiState.value = _uiState.value.copy(
+                                    comprando = false,
+                                    compraCriada = pedidoPago,
+                                    cardPaymentClientSecret = null,
+                                    cardPaymentPublishableKey = null,
+                                    cardPaymentCustomerId = null,
+                                    cardPaymentEphemeralKeySecret = null,
+                                    cardPaymentPedido = null,
+                                    error = null
+                                )
+                            },
+                            onFailure = { e ->
+                                _uiState.value = _uiState.value.copy(
+                                    comprando = false,
+                                    error = e.message ?: "Pagamento aprovado, mas nao foi possivel salvar o pedido"
+                                )
+                            }
                         )
                     }
-                    _uiState.value = _uiState.value.copy(
-                        compraCriada = pedidoPago,
-                        cardPaymentClientSecret = null,
-                        cardPaymentPublishableKey = null,
-                        cardPaymentCustomerId = null,
-                        cardPaymentEphemeralKeySecret = null,
-                        cardPaymentPedido = null,
-                        error = null
-                    )
                 }
             }
             is PaymentSheetResult.Canceled -> {

@@ -31,51 +31,70 @@ class PedidoRepository {
         clienteLongitudeAtual: Double = 0.0
     ): Result<Pedido> {
         return try {
-            val produto = item.produto
-            val pedidoId = UUID.randomUUID().toString()
-            val valorProduto = produto.precoPromocional
-                ?.takeIf { produto.emPromocao && it > 0.0 }
-                ?: produto.preco
-            val clienteLat = if (enderecoEntrega != null) 0.0 else clienteLatitudeAtual.takeIf { it != 0.0 } ?: cliente.getDouble("latitude")
-            val clienteLng = if (enderecoEntrega != null) 0.0 else clienteLongitudeAtual.takeIf { it != 0.0 } ?: cliente.getDouble("longitude")
-            val estimativa = estimarEntrega(
-                entrega = entrega,
-                lojaLat = item.lojaLatitude,
-                lojaLng = item.lojaLongitude,
-                clienteLat = clienteLat,
-                clienteLng = clienteLng
-            )
-            val pedido = Pedido(
-                id = pedidoId,
-                clienteLogin = cliente.documentoId,
-                clienteNome = cliente.getString("nome"),
-                clienteCidade = cliente.getString("cidade").ifBlank { "Salvador" },
-                clienteEstado = cliente.getString("estado").ifBlank { "BA" },
-                clienteLatitude = clienteLat,
-                clienteLongitude = clienteLng,
-                enderecoEntregaId = enderecoEntrega?.id.orEmpty(),
-                enderecoEntregaApelido = enderecoEntrega?.apelido.orEmpty(),
-                enderecoEntregaResumo = enderecoEntrega?.resumo().orEmpty(),
-                loja = item.nomeLoja,
-                lojaLatitude = item.lojaLatitude,
-                lojaLongitude = item.lojaLongitude,
-                vendedorLogin = produto.vendedorLogin,
-                produtoId = produto.id,
-                produtoTitulo = produto.titulo,
-                produtoImagem = produto.imagens.firstOrNull().orEmpty(),
-                categoria = produto.categoria,
-                valorProduto = valorProduto,
-                prazoEntrega = entrega.titulo,
-                minutosPrometidos = entrega.minutos,
-                taxaEntrega = entrega.taxa,
-                valorTotal = valorProduto + entrega.taxa,
-                cidadeBase = "Salvador",
-                estimativaMinutos = estimativa.first,
-                distanciaEstimadaKm = estimativa.second
-            )
-
-            pedidos.document(pedidoId).set(pedido).await()
+            val pedido = montarPedido(item, cliente, entrega, enderecoEntrega, clienteLatitudeAtual, clienteLongitudeAtual)
+            pedidos.document(pedido.id).set(pedido).await()
             Result.success(pedido)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun montarPedido(
+        item: ProdutoVitrine,
+        cliente: Login,
+        entrega: EntregaRapida,
+        enderecoEntrega: EnderecoEntrega? = null,
+        clienteLatitudeAtual: Double = 0.0,
+        clienteLongitudeAtual: Double = 0.0
+    ): Pedido {
+        val produto = item.produto
+        val pedidoId = UUID.randomUUID().toString()
+        val valorProduto = produto.precoPromocional
+            ?.takeIf { produto.emPromocao && it > 0.0 }
+            ?: produto.preco
+        val clienteLat = if (enderecoEntrega != null) 0.0 else clienteLatitudeAtual.takeIf { it != 0.0 } ?: cliente.getDouble("latitude")
+        val clienteLng = if (enderecoEntrega != null) 0.0 else clienteLongitudeAtual.takeIf { it != 0.0 } ?: cliente.getDouble("longitude")
+        val estimativa = estimarEntrega(
+            entrega = entrega,
+            lojaLat = item.lojaLatitude,
+            lojaLng = item.lojaLongitude,
+            clienteLat = clienteLat,
+            clienteLng = clienteLng
+        )
+        return Pedido(
+            id = pedidoId,
+            clienteLogin = cliente.documentoId,
+            clienteNome = cliente.getString("nome"),
+            clienteCidade = cliente.getString("cidade").ifBlank { "Salvador" },
+            clienteEstado = cliente.getString("estado").ifBlank { "BA" },
+            clienteLatitude = clienteLat,
+            clienteLongitude = clienteLng,
+            enderecoEntregaId = enderecoEntrega?.id.orEmpty(),
+            enderecoEntregaApelido = enderecoEntrega?.apelido.orEmpty(),
+            enderecoEntregaResumo = enderecoEntrega?.resumo().orEmpty(),
+            loja = item.nomeLoja,
+            lojaLatitude = item.lojaLatitude,
+            lojaLongitude = item.lojaLongitude,
+            vendedorLogin = produto.vendedorLogin,
+            produtoId = produto.id,
+            produtoTitulo = produto.titulo,
+            produtoImagem = produto.imagens.firstOrNull().orEmpty(),
+            categoria = produto.categoria,
+            valorProduto = valorProduto,
+            prazoEntrega = entrega.titulo,
+            minutosPrometidos = entrega.minutos,
+            taxaEntrega = entrega.taxa,
+            valorTotal = valorProduto + entrega.taxa,
+            cidadeBase = "Salvador",
+            estimativaMinutos = estimativa.first,
+            distanciaEstimadaKm = estimativa.second
+        )
+    }
+
+    suspend fun salvarPedidoPago(pedido: Pedido): Result<Unit> {
+        return try {
+            pedidos.document(pedido.id).set(pedido).await()
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
