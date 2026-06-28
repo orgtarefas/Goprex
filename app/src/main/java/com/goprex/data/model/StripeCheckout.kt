@@ -88,6 +88,22 @@ data class CreateCardPaymentRequest(
     val paymentMethodId: String
 )
 
+data class CreateCardPaymentIntentRequest(
+    val pedidoId: String,
+    val clienteLogin: String,
+    val clienteNome: String,
+    val produtoTitulo: String,
+    val loja: String,
+    val valorTotalCentavos: Int,
+    val prazoEntrega: String
+)
+
+data class CreateCardPaymentIntentResponse(
+    val paymentIntentId: String = "",
+    val paymentIntentClientSecret: String = "",
+    val publishableKey: String = ""
+)
+
 data class CardPaymentResponse(
     val paymentIntentId: String = "",
     val status: String = ""

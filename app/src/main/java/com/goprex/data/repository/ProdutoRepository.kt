@@ -5,6 +5,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import com.goprex.data.model.Produto
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
@@ -124,22 +127,44 @@ class ProdutoRepository {
                 .get()
                 .await()
 
-            val produtos = mutableListOf<ProdutoVitrine>()
+            val lojaRefs = snapshot.documents
+                .mapNotNull { it.reference.parent.parent }
+                .distinctBy { it.path }
 
-            for (doc in snapshot.documents) {
-                val produto = doc.toObject(Produto::class.java) ?: continue
-                if (!produto.disponivel) continue
-                val nomeLoja = doc.reference.parent.parent?.id.orEmpty()
-                val lojaDoc = doc.reference.parent.parent?.get()?.await()
-                produtos.add(
+            val lojasPorPath = coroutineScope {
+                lojaRefs.map { lojaRef ->
+                    async {
+                        lojaRef.path to runCatching { lojaRef.get().await() }.getOrNull()
+                    }
+                }.awaitAll().toMap()
+            }
+
+            val produtos = snapshot.documents.mapNotNull { doc ->
+                val produto = doc.toObject(Produto::class.java)
+                    ?.takeIf { it.disponivel }
+                    ?: return@mapNotNull null
+                val lojaRef = doc.reference.parent.parent
+                val nomeLoja = lojaRef?.id.orEmpty()
+                val lojaDoc = lojaRef?.path?.let { lojasPorPath[it] }
+
+                ProdutoVitrine(
+                    produto = produto,
+                    nomeLoja = nomeLoja,
+                    lojaLatitude = (lojaDoc?.get("latitude") as? Number)?.toDouble() ?: 0.0,
+                    lojaLongitude = (lojaDoc?.get("longitude") as? Number)?.toDouble() ?: 0.0,
+                    logoLoja = lojaDoc?.getString("logoLoja").orEmpty()
+                )
+            }.ifEmpty {
+                snapshot.documents.mapNotNull { doc ->
+                    val produto = doc.toObject(Produto::class.java)
+                        ?.takeIf { it.disponivel }
+                        ?: return@mapNotNull null
+                    val nomeLoja = doc.reference.parent.parent?.id.orEmpty()
                     ProdutoVitrine(
                         produto = produto,
-                        nomeLoja = nomeLoja,
-                        lojaLatitude = (lojaDoc?.get("latitude") as? Number)?.toDouble() ?: 0.0,
-                        lojaLongitude = (lojaDoc?.get("longitude") as? Number)?.toDouble() ?: 0.0,
-                        logoLoja = lojaDoc?.getString("logoLoja").orEmpty()
+                        nomeLoja = nomeLoja
                     )
-                )
+                }
             }
 
             val produtosOrdenados = produtos.sortedByDescending { it.produto.dataCriacao }

@@ -2,6 +2,7 @@ package com.goprex.data.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.goprex.data.model.EnderecoEntrega
 import com.goprex.data.model.Login
 import com.goprex.data.model.Pedido
 import com.goprex.data.model.StatusPedido
@@ -25,6 +26,7 @@ class PedidoRepository {
         item: ProdutoVitrine,
         cliente: Login,
         entrega: EntregaRapida,
+        enderecoEntrega: EnderecoEntrega? = null,
         clienteLatitudeAtual: Double = 0.0,
         clienteLongitudeAtual: Double = 0.0
     ): Result<Pedido> {
@@ -34,8 +36,8 @@ class PedidoRepository {
             val valorProduto = produto.precoPromocional
                 ?.takeIf { produto.emPromocao && it > 0.0 }
                 ?: produto.preco
-            val clienteLat = clienteLatitudeAtual.takeIf { it != 0.0 } ?: cliente.getDouble("latitude")
-            val clienteLng = clienteLongitudeAtual.takeIf { it != 0.0 } ?: cliente.getDouble("longitude")
+            val clienteLat = if (enderecoEntrega != null) 0.0 else clienteLatitudeAtual.takeIf { it != 0.0 } ?: cliente.getDouble("latitude")
+            val clienteLng = if (enderecoEntrega != null) 0.0 else clienteLongitudeAtual.takeIf { it != 0.0 } ?: cliente.getDouble("longitude")
             val estimativa = estimarEntrega(
                 entrega = entrega,
                 lojaLat = item.lojaLatitude,
@@ -51,6 +53,9 @@ class PedidoRepository {
                 clienteEstado = cliente.getString("estado").ifBlank { "BA" },
                 clienteLatitude = clienteLat,
                 clienteLongitude = clienteLng,
+                enderecoEntregaId = enderecoEntrega?.id.orEmpty(),
+                enderecoEntregaApelido = enderecoEntrega?.apelido.orEmpty(),
+                enderecoEntregaResumo = enderecoEntrega?.resumo().orEmpty(),
                 loja = item.nomeLoja,
                 lojaLatitude = item.lojaLatitude,
                 lojaLongitude = item.lojaLongitude,
@@ -174,6 +179,26 @@ class PedidoRepository {
 
     suspend fun atualizarStatus(pedidoId: String, status: StatusPedido): Result<Unit> {
         return atualizarPedido(pedidoId, mapOf("status" to status.name))
+    }
+
+    suspend fun atualizarPagamento(
+        pedidoId: String,
+        status: StatusPedido,
+        pagamentoStatus: String,
+        stripeCheckoutSessionId: String = "",
+        stripePaymentIntentId: String = "",
+        checkoutUrl: String = "",
+        pagoEm: Long = 0L
+    ): Result<Unit> {
+        val dados = mutableMapOf<String, Any>(
+            "status" to status.name,
+            "pagamentoStatus" to pagamentoStatus,
+            "stripeCheckoutSessionId" to stripeCheckoutSessionId,
+            "stripePaymentIntentId" to stripePaymentIntentId,
+            "checkoutUrl" to checkoutUrl
+        )
+        if (pagoEm > 0L) dados["pagoEm"] = pagoEm
+        return atualizarPedido(pedidoId, dados)
     }
 
     suspend fun atualizarLocalizacaoEntregador(

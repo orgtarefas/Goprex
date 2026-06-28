@@ -1,11 +1,7 @@
 package com.goprex.ui.produto
 
 import android.content.Intent
-import android.Manifest
 import android.net.Uri
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,6 +30,7 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Pix
 import androidx.compose.material.icons.filled.Search
@@ -70,9 +67,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
-import androidx.core.content.ContextCompat
 import com.goprex.data.model.CreatePixPaymentResponse
-import com.google.android.gms.location.LocationServices
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,14 +75,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
+import com.goprex.data.model.EnderecoEntrega
 import com.goprex.data.model.Login
 import com.goprex.data.model.Pedido
 import com.goprex.data.model.Produto
 import com.goprex.data.model.StripeCard
 import com.goprex.data.repository.ProdutoVitrine
+import com.goprex.ui.telas.tela_home_meus_dados
 import com.goprex.ui.theme.GoPrexDark
 import com.goprex.ui.theme.GoPrexOrange
 import com.goprex.ui.theme.SuccessGreen
+import com.stripe.android.PaymentConfiguration
+import com.stripe.android.paymentsheet.PaymentSheet
+import com.stripe.android.paymentsheet.rememberPaymentSheet
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -112,67 +112,20 @@ fun VitrineScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    val paymentSheet = rememberPaymentSheet { result ->
+        viewModel.processarResultadoPagamentoCartao(result)
+    }
     val numberFormat = remember { NumberFormat.getCurrencyInstance(Locale("pt", "BR")) }
     var modo by remember { mutableStateOf(ModoVitrine.LOJAS) }
     var itemSelecionado by remember { mutableStateOf<ProdutoVitrine?>(null) }
-    var clienteLatitude by remember { mutableStateOf(0.0) }
-    var clienteLongitude by remember { mutableStateOf(0.0) }
-    var solicitandoLocalizacao by remember { mutableStateOf(false) }
     var formaPagamentoSelecionada by remember { mutableStateOf(FormaPagamento.CARTAO) }
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (granted) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-            ) {
-                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                    if (location != null) {
-                        clienteLatitude = location.latitude
-                        clienteLongitude = location.longitude
-                    }
-                    solicitandoLocalizacao = false
-                }.addOnFailureListener {
-                    solicitandoLocalizacao = false
-                }
-            }
-        } else {
-            solicitandoLocalizacao = false
-        }
-    }
-
-    fun capturarLocalizacaoCliente() {
-        solicitandoLocalizacao = true
-        val hasPermission =
-            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-
-        if (hasPermission) {
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                if (location != null) {
-                    clienteLatitude = location.latitude
-                    clienteLongitude = location.longitude
-                }
-                solicitandoLocalizacao = false
-            }.addOnFailureListener {
-                solicitandoLocalizacao = false
-            }
-        } else {
-            locationPermissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
-        }
-    }
 
     LaunchedEffect(Unit) { viewModel.carregarProdutos() }
     LaunchedEffect(loginData?.documentoId) {
-        if (loginData != null) viewModel.carregarCartoes(loginData)
+        if (loginData != null) {
+            viewModel.carregarEnderecos(loginData)
+            viewModel.carregarCartoes(loginData)
+        }
     }
 
     LaunchedEffect(uiState.checkoutUrl) {
@@ -182,6 +135,20 @@ fun VitrineScreen(
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
             }
             viewModel.limparCheckoutUrl()
+        }
+    }
+
+    LaunchedEffect(uiState.cardPaymentClientSecret, uiState.cardPaymentPublishableKey) {
+        val clientSecret = uiState.cardPaymentClientSecret
+        val publishableKey = uiState.cardPaymentPublishableKey
+        if (!clientSecret.isNullOrBlank() && !publishableKey.isNullOrBlank()) {
+            PaymentConfiguration.init(context.applicationContext, publishableKey)
+            paymentSheet.presentWithPaymentIntent(
+                paymentIntentClientSecret = clientSecret,
+                configuration = PaymentSheet.Configuration(
+                    merchantDisplayName = "GoPrex"
+                )
+            )
         }
     }
 
@@ -258,7 +225,7 @@ fun VitrineScreen(
                 CircularProgressIndicator(color = GoPrexOrange)
             }
 
-            uiState.error != null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            uiState.error != null && uiState.produtos.isEmpty() -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(uiState.error ?: "Erro ao carregar vitrine", color = Color.Red)
             }
 
@@ -318,27 +285,33 @@ fun VitrineScreen(
             entrega = uiState.entregaSelecionada,
             numberFormat = numberFormat,
             isLoading = uiState.comprando,
-            clienteLocalizado = clienteLatitude != 0.0 && clienteLongitude != 0.0,
-            solicitandoLocalizacao = solicitandoLocalizacao,
             formaPagamento = formaPagamentoSelecionada,
             errorMessage = uiState.error,
+            enderecos = uiState.enderecos,
+            enderecoSelecionadoId = uiState.enderecoSelecionadoId,
+            enderecosLoading = uiState.enderecosLoading,
+            enderecosError = uiState.enderecosError,
             cartoes = uiState.cartoes,
             cartaoSelecionadoId = uiState.cartaoSelecionadoId,
+            onEnderecoSelecionadoChange = viewModel::selecionarEndereco,
+            onCadastrarEndereco = {
+                context.startActivity(
+                    Intent(context, tela_home_meus_dados::class.java)
+                        .putExtra("abaInicial", 2)
+                )
+            },
             onFormaPagamentoChange = { formaPagamentoSelecionada = it },
             onCartaoSelecionadoChange = viewModel::selecionarCartao,
             onAtualizarCartoes = {
                 if (loginData != null) viewModel.carregarCartoes(loginData)
             },
-            onUsarLocalizacao = { capturarLocalizacaoCliente() },
             onDismiss = { if (!uiState.comprando) itemSelecionado = null },
             onConfirmar = {
                 if (loginData != null) {
                     viewModel.comprar(
                         item = item,
                         cliente = loginData,
-                        formaPagamento = formaPagamentoSelecionada,
-                        clienteLatitude = clienteLatitude,
-                        clienteLongitude = clienteLongitude
+                        formaPagamento = formaPagamentoSelecionada
                     )
                 }
             }
@@ -698,16 +671,19 @@ private fun ConfirmarCompraDialog(
     entrega: EntregaRapida,
     numberFormat: NumberFormat,
     isLoading: Boolean,
-    clienteLocalizado: Boolean,
-    solicitandoLocalizacao: Boolean,
     formaPagamento: FormaPagamento,
     errorMessage: String?,
+    enderecos: List<EnderecoEntrega>,
+    enderecoSelecionadoId: String?,
+    enderecosLoading: Boolean,
+    enderecosError: String?,
     cartoes: List<StripeCard>,
     cartaoSelecionadoId: String?,
+    onEnderecoSelecionadoChange: (String) -> Unit,
+    onCadastrarEndereco: () -> Unit,
     onFormaPagamentoChange: (FormaPagamento) -> Unit,
     onCartaoSelecionadoChange: (String) -> Unit,
     onAtualizarCartoes: () -> Unit,
-    onUsarLocalizacao: () -> Unit,
     onDismiss: () -> Unit,
     onConfirmar: () -> Unit
 ) {
@@ -729,6 +705,15 @@ private fun ConfirmarCompraDialog(
                 Text("Produto: ${numberFormat.format(valorProduto)}")
                 Text("Taxa: ${numberFormat.format(entrega.taxa)}")
                 Text("Total: ${numberFormat.format(total)}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = GoPrexOrange)
+                EnderecosEntregaSection(
+                    enderecos = enderecos,
+                    enderecoSelecionadoId = enderecoSelecionadoId,
+                    isLoading = enderecosLoading,
+                    errorMessage = enderecosError,
+                    enabled = !isLoading,
+                    onEnderecoSelecionadoChange = onEnderecoSelecionadoChange,
+                    onCadastrarEndereco = onCadastrarEndereco
+                )
                 Text("Forma de pagamento", fontWeight = FontWeight.Bold, color = GoPrexDark)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FormaPagamentoChip(
@@ -740,18 +725,24 @@ private fun ConfirmarCompraDialog(
                     FormaPagamentoChip(
                         forma = FormaPagamento.PIX,
                         selected = formaPagamento == FormaPagamento.PIX,
-                        enabled = !isLoading,
-                        onClick = { onFormaPagamentoChange(FormaPagamento.PIX) }
+                        enabled = false,
+                        onClick = {}
                     )
                 }
-                Text(formaPagamento.descricao, fontSize = 12.sp, color = Color.Gray)
+                Text(
+                    if (formaPagamento == FormaPagamento.PIX) "Pix indisponivel no momento" else formaPagamento.descricao,
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
                 if (formaPagamento == FormaPagamento.CARTAO) {
-                    CartoesPagamentoSection(
-                        cartoes = cartoes,
-                        cartaoSelecionadoId = cartaoSelecionadoId,
-                        enabled = !isLoading,
-                        onCartaoSelecionadoChange = onCartaoSelecionadoChange,
-                        onAtualizarCartoes = onAtualizarCartoes
+                    Text(
+                        "Voce sera direcionado para o checkout seguro para informar ou confirmar os dados do cartao.",
+                        fontSize = 12.sp,
+                        color = GoPrexDark.copy(alpha = 0.75f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(GoPrexOrange.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
+                            .padding(10.dp)
                     )
                 }
                 if (!errorMessage.isNullOrBlank()) {
@@ -765,29 +756,13 @@ private fun ConfirmarCompraDialog(
                             .padding(10.dp)
                     )
                 }
-                Button(
-                    onClick = onUsarLocalizacao,
-                    enabled = !isLoading && !solicitandoLocalizacao,
-                    colors = ButtonDefaults.buttonColors(containerColor = if (clienteLocalizado) SuccessGreen else GoPrexDark),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(Icons.Filled.LocalShipping, null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        when {
-                            solicitandoLocalizacao -> "Localizando..."
-                            clienteLocalizado -> "Destino GPS confirmado"
-                            else -> "Usar minha localização"
-                        }
-                    )
-                }
                 Text("Disponivel apenas para Salvador. A entrega sera liberada apos o pagamento aprovado.", fontSize = 12.sp, color = Color.Gray)
             }
         },
         confirmButton = {
             Button(
                 onClick = onConfirmar,
-                enabled = !isLoading && (formaPagamento != FormaPagamento.CARTAO || cartoes.isNotEmpty()),
+                enabled = !isLoading && enderecoSelecionadoId != null,
                 colors = ButtonDefaults.buttonColors(containerColor = GoPrexOrange)
             ) {
                 if (isLoading) {
@@ -803,6 +778,89 @@ private fun ConfirmarCompraDialog(
             }
         }
     )
+}
+
+@Composable
+private fun EnderecosEntregaSection(
+    enderecos: List<EnderecoEntrega>,
+    enderecoSelecionadoId: String?,
+    isLoading: Boolean,
+    errorMessage: String?,
+    enabled: Boolean,
+    onEnderecoSelecionadoChange: (String) -> Unit,
+    onCadastrarEndereco: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Endereco de entrega", fontWeight = FontWeight.Bold, color = GoPrexDark)
+            if (enderecos.isEmpty() && !isLoading) {
+                TextButton(onClick = onCadastrarEndereco, enabled = enabled) {
+                    Text("Cadastrar Endereco")
+                }
+            }
+        }
+
+        when {
+            isLoading -> Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = GoPrexOrange, strokeWidth = 2.dp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Carregando enderecos...", fontSize = 12.sp, color = Color.Gray)
+            }
+
+            !errorMessage.isNullOrBlank() -> Text(
+                errorMessage,
+                fontSize = 12.sp,
+                color = Color.Red,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Red.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
+                    .padding(10.dp)
+            )
+
+            enderecos.isEmpty() -> Text(
+                "Cadastre um endereco para continuar a compra.",
+                fontSize = 12.sp,
+                color = Color.Red,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Red.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
+                    .padding(10.dp)
+            )
+
+            else -> enderecos.forEach { endereco ->
+                FilterChip(
+                    selected = endereco.id == enderecoSelecionadoId,
+                    onClick = { onEnderecoSelecionadoChange(endereco.id) },
+                    enabled = enabled,
+                    label = {
+                        Column {
+                            Text(
+                                endereco.apelido.ifBlank { "Endereco" } + if (endereco.principal) " - Principal" else "",
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                endereco.resumo(),
+                                fontSize = 11.sp,
+                                color = Color.Gray,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Filled.LocationOn, null, modifier = Modifier.size(16.dp))
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -849,12 +907,12 @@ private fun CartoesPagamentoSection(
 
         if (cartoes.isEmpty()) {
             Text(
-                "Nenhum cartao cadastrado. Cadastre em Sistema de Pagamento e volte para comprar.",
+                "Nenhum cartao salvo. Voce pode continuar para preencher os dados no checkout seguro.",
                 fontSize = 12.sp,
-                color = Color.Red,
+                color = GoPrexDark.copy(alpha = 0.75f),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.Red.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
+                    .background(GoPrexOrange.copy(alpha = 0.08f), RoundedCornerShape(8.dp))
                     .padding(10.dp)
             )
         } else {

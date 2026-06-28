@@ -3,6 +3,8 @@ package com.goprex.data.repository
 import com.goprex.data.model.CreateCheckoutSessionRequest
 import com.goprex.data.model.CreateCheckoutSessionResponse
 import com.goprex.data.model.CreateCardPaymentRequest
+import com.goprex.data.model.CreateCardPaymentIntentRequest
+import com.goprex.data.model.CreateCardPaymentIntentResponse
 import com.goprex.data.model.CreateCardSetupIntentResponse
 import com.goprex.data.model.CreateCardSetupSessionResponse
 import com.goprex.data.model.CreatePixPaymentRequest
@@ -17,6 +19,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.POST
+import retrofit2.HttpException
 
 private const val GOPREX_BACKEND_URL = "https://goprex-backend-1.onrender.com/"
 
@@ -60,6 +63,11 @@ interface StripeApiService {
     suspend fun createCardPayment(
         @Body request: CreateCardPaymentRequest
     ): CardPaymentResponse
+
+    @POST("stripe/create-card-payment-intent")
+    suspend fun createCardPaymentIntent(
+        @Body request: CreateCardPaymentIntentRequest
+    ): CreateCardPaymentIntentResponse
 }
 
 class StripeRepository {
@@ -73,7 +81,7 @@ class StripeRepository {
         return try {
             Result.success(api.createCheckoutSession(request))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(e.toApiException("Erro ao iniciar pagamento"))
         }
     }
 
@@ -81,7 +89,7 @@ class StripeRepository {
         return try {
             Result.success(api.createPixPayment(request))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(e.toApiException("Erro ao gerar Pix"))
         }
     }
 
@@ -89,7 +97,7 @@ class StripeRepository {
         return try {
             Result.success(api.createCardSetupSession(request))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(e.toApiException("Erro ao cadastrar cartao"))
         }
     }
 
@@ -97,7 +105,7 @@ class StripeRepository {
         return try {
             Result.success(api.createCardSetupIntent(request))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(e.toApiException("Erro ao preparar cadastro do cartao"))
         }
     }
 
@@ -105,7 +113,7 @@ class StripeRepository {
         return try {
             Result.success(api.listCards(request))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(e.toApiException("Erro ao listar cartoes"))
         }
     }
 
@@ -113,7 +121,7 @@ class StripeRepository {
         return try {
             Result.success(api.updateCardAlias(request))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(e.toApiException("Erro ao atualizar cartao"))
         }
     }
 
@@ -121,7 +129,7 @@ class StripeRepository {
         return try {
             Result.success(api.deleteCard(request))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(e.toApiException("Erro ao remover cartao"))
         }
     }
 
@@ -129,7 +137,26 @@ class StripeRepository {
         return try {
             Result.success(api.createCardPayment(request))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(e.toApiException("Erro ao cobrar cartao"))
         }
+    }
+
+    suspend fun criarPaymentIntentCartao(request: CreateCardPaymentIntentRequest): Result<CreateCardPaymentIntentResponse> {
+        return try {
+            Result.success(api.createCardPaymentIntent(request))
+        } catch (e: Exception) {
+            Result.failure(e.toApiException("Erro ao iniciar pagamento no app"))
+        }
+    }
+
+    private fun Exception.toApiException(fallback: String): Exception {
+        val httpException = this as? HttpException ?: return Exception(message ?: fallback)
+        val body = runCatching { httpException.response()?.errorBody()?.string() }.getOrNull().orEmpty()
+        val errorMessage = Regex("\"error\"\\s*:\\s*\"([^\"]+)\"")
+            .find(body)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.replace("\\\"", "\"")
+        return Exception(errorMessage ?: "$fallback (HTTP ${httpException.code()})")
     }
 }
