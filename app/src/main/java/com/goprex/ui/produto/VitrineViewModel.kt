@@ -46,6 +46,8 @@ data class VitrineUiState(
     val checkoutUrl: String? = null,
     val cardPaymentClientSecret: String? = null,
     val cardPaymentPublishableKey: String? = null,
+    val cardPaymentCustomerId: String? = null,
+    val cardPaymentEphemeralKeySecret: String? = null,
     val cardPaymentPedido: Pedido? = null,
     val isLoading: Boolean = false,
     val error: String? = null
@@ -347,6 +349,8 @@ class VitrineViewModel : ViewModel() {
                         compraCriada = null,
                         cardPaymentClientSecret = response.paymentIntentClientSecret,
                         cardPaymentPublishableKey = response.publishableKey,
+                        cardPaymentCustomerId = response.customerId,
+                        cardPaymentEphemeralKeySecret = response.ephemeralKeySecret,
                         cardPaymentPedido = pedido.copy(stripePaymentIntentId = response.paymentIntentId)
                     )
                 }
@@ -383,6 +387,8 @@ class VitrineViewModel : ViewModel() {
                         compraCriada = pedidoPago,
                         cardPaymentClientSecret = null,
                         cardPaymentPublishableKey = null,
+                        cardPaymentCustomerId = null,
+                        cardPaymentEphemeralKeySecret = null,
                         cardPaymentPedido = null,
                         error = null
                     )
@@ -392,6 +398,8 @@ class VitrineViewModel : ViewModel() {
                 _uiState.value = _uiState.value.copy(
                     cardPaymentClientSecret = null,
                     cardPaymentPublishableKey = null,
+                    cardPaymentCustomerId = null,
+                    cardPaymentEphemeralKeySecret = null,
                     cardPaymentPedido = null
                 )
             }
@@ -399,6 +407,8 @@ class VitrineViewModel : ViewModel() {
                 _uiState.value = _uiState.value.copy(
                     cardPaymentClientSecret = null,
                     cardPaymentPublishableKey = null,
+                    cardPaymentCustomerId = null,
+                    cardPaymentEphemeralKeySecret = null,
                     cardPaymentPedido = null,
                     error = result.error.localizedMessage ?: "Erro no pagamento"
                 )

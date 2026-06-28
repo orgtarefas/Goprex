@@ -101,6 +101,8 @@ data class CreateCardPaymentIntentRequest(
 data class CreateCardPaymentIntentResponse(
     val paymentIntentId: String = "",
     val paymentIntentClientSecret: String = "",
+    val customerId: String = "",
+    val ephemeralKeySecret: String = "",
     val publishableKey: String = ""
 )
 

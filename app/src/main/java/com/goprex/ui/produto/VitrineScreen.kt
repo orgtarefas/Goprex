@@ -138,15 +138,30 @@ fun VitrineScreen(
         }
     }
 
-    LaunchedEffect(uiState.cardPaymentClientSecret, uiState.cardPaymentPublishableKey) {
+    LaunchedEffect(
+        uiState.cardPaymentClientSecret,
+        uiState.cardPaymentPublishableKey,
+        uiState.cardPaymentCustomerId,
+        uiState.cardPaymentEphemeralKeySecret
+    ) {
         val clientSecret = uiState.cardPaymentClientSecret
         val publishableKey = uiState.cardPaymentPublishableKey
+        val customerId = uiState.cardPaymentCustomerId
+        val ephemeralKeySecret = uiState.cardPaymentEphemeralKeySecret
         if (!clientSecret.isNullOrBlank() && !publishableKey.isNullOrBlank()) {
             PaymentConfiguration.init(context.applicationContext, publishableKey)
             paymentSheet.presentWithPaymentIntent(
                 paymentIntentClientSecret = clientSecret,
                 configuration = PaymentSheet.Configuration(
-                    merchantDisplayName = "GoPrex"
+                    merchantDisplayName = "GoPrex",
+                    customer = if (!customerId.isNullOrBlank() && !ephemeralKeySecret.isNullOrBlank()) {
+                        PaymentSheet.CustomerConfiguration(
+                            id = customerId,
+                            ephemeralKeySecret = ephemeralKeySecret
+                        )
+                    } else {
+                        null
+                    }
                 )
             )
         }
