@@ -2,6 +2,7 @@ package com.goprex.data.repository
 
 import com.goprex.data.model.CreateCheckoutSessionRequest
 import com.goprex.data.model.CreateCheckoutSessionResponse
+import com.goprex.data.model.AdminContaRecebimentoRequest
 import com.goprex.data.model.CreateCardPaymentRequest
 import com.goprex.data.model.CreateCardPaymentIntentRequest
 import com.goprex.data.model.CreateCardPaymentIntentResponse
@@ -15,9 +16,14 @@ import com.goprex.data.model.ListCardsResponse
 import com.goprex.data.model.OkResponse
 import com.goprex.data.model.StripeClienteRequest
 import com.goprex.data.model.UpdateCardAliasRequest
+import com.goprex.data.model.AdminContaDiagnosticoResponse
+import com.goprex.data.model.VerificarSenhaContaAdminRequest
+import com.goprex.data.model.VerificarSenhaContaAdminResponse
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.HttpException
 
@@ -68,11 +74,32 @@ interface StripeApiService {
     suspend fun createCardPaymentIntent(
         @Body request: CreateCardPaymentIntentRequest
     ): CreateCardPaymentIntentResponse
+
+    @POST("admin/conta-recebimento")
+    suspend fun salvarContaAdmin(
+        @Body request: AdminContaRecebimentoRequest
+    ): OkResponse
+
+    @POST("admin/verificar-senha-conta")
+    suspend fun verificarSenhaContaAdmin(
+        @Body request: VerificarSenhaContaAdminRequest
+    ): VerificarSenhaContaAdminResponse
+
+    @GET("health")
+    suspend fun diagnosticoContaAdmin(): AdminContaDiagnosticoResponse
 }
 
 class StripeRepository {
+    private val httpClient = OkHttpClient.Builder()
+        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .callTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
     private val api = Retrofit.Builder()
         .baseUrl(GOPREX_BACKEND_URL)
+        .client(httpClient)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
         .create(StripeApiService::class.java)
@@ -146,6 +173,30 @@ class StripeRepository {
             Result.success(api.createCardPaymentIntent(request))
         } catch (e: Exception) {
             Result.failure(e.toApiException("Erro ao iniciar pagamento no app"))
+        }
+    }
+
+    suspend fun salvarContaAdmin(request: AdminContaRecebimentoRequest): Result<OkResponse> {
+        return try {
+            Result.success(api.salvarContaAdmin(request))
+        } catch (e: Exception) {
+            Result.failure(e.toApiException("Erro ao salvar conta do administrador"))
+        }
+    }
+
+    suspend fun verificarSenhaContaAdmin(request: VerificarSenhaContaAdminRequest): Result<VerificarSenhaContaAdminResponse> {
+        return try {
+            Result.success(api.verificarSenhaContaAdmin(request))
+        } catch (e: Exception) {
+            Result.failure(e.toApiException("Senha do administrador invalida"))
+        }
+    }
+
+    suspend fun diagnosticoContaAdmin(): Result<AdminContaDiagnosticoResponse> {
+        return try {
+            Result.success(api.diagnosticoContaAdmin())
+        } catch (e: Exception) {
+            Result.failure(e.toApiException("Nao foi possivel diagnosticar a conta do administrador"))
         }
     }
 
