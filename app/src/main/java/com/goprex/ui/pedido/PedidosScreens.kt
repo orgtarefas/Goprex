@@ -306,8 +306,14 @@ private fun PedidoCard(
                 }
                 StatusChip(pedido.status)
                 PedidoTimeline(pedido)
-                Text("Entrega ${pedido.prazoEntrega} • taxa ${numberFormat.format(pedido.taxaEntrega)}", fontSize = 12.sp, color = SuccessGreen)
+                Text("Entrega com tarifas inclusas no valor do produto", fontSize = 12.sp, color = SuccessGreen)
                 Text("Total ${numberFormat.format(pedido.valorTotal)}", fontWeight = FontWeight.Bold, color = GoPrexOrange)
+                if (pedido.valorEntregador > 0.0) {
+                    Text("Repasse entregador: ${numberFormat.format(pedido.valorEntregador)}", fontSize = 12.sp, color = GoPrexDark.copy(alpha = 0.75f))
+                }
+                if (pedido.valorVendedor > 0.0) {
+                    Text("Repasse vendedor: ${numberFormat.format(pedido.valorVendedor)}", fontSize = 12.sp, color = GoPrexDark.copy(alpha = 0.75f))
+                }
                 Text("Estimativa: ${pedido.estimativaMinutos} min • ${String.format(Locale("pt", "BR"), "%.1f", pedido.distanciaEstimadaKm)} km em Salvador", fontSize = 11.sp, color = Color.Gray)
                 if (pedido.entregadorNome.isNotBlank()) {
                     Text("Entregador: ${pedido.entregadorNome}", fontSize = 12.sp, color = GoPrexDark.copy(alpha = 0.75f))

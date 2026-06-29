@@ -7,13 +7,17 @@ data class CreateCheckoutSessionRequest(
     val produtoTitulo: String,
     val loja: String,
     val valorTotalCentavos: Int,
+    val tarifaTransacaoCentavos: Int,
     val prazoEntrega: String,
     val formaPagamento: String
 )
 
 data class CreateCheckoutSessionResponse(
     val checkoutSessionId: String = "",
-    val checkoutUrl: String = ""
+    val checkoutUrl: String = "",
+    val valorTotalCentavos: Int = 0,
+    val tarifaTransacaoCentavos: Int = 0,
+    val tarifaEntregaCentavos: Int = 0
 )
 
 data class CreatePixPaymentRequest(
@@ -23,6 +27,7 @@ data class CreatePixPaymentRequest(
     val produtoTitulo: String,
     val loja: String,
     val valorTotalCentavos: Int,
+    val tarifaTransacaoCentavos: Int,
     val prazoEntrega: String
 )
 
@@ -32,7 +37,10 @@ data class CreatePixPaymentResponse(
     val pixCopiaECola: String = "",
     val pixQrCodeUrl: String = "",
     val hostedInstructionsUrl: String = "",
-    val expiresAt: Long = 0L
+    val expiresAt: Long = 0L,
+    val valorTotalCentavos: Int = 0,
+    val tarifaTransacaoCentavos: Int = 0,
+    val tarifaEntregaCentavos: Int = 0
 )
 
 data class StripeClienteRequest(
@@ -84,6 +92,7 @@ data class CreateCardPaymentRequest(
     val produtoTitulo: String,
     val loja: String,
     val valorTotalCentavos: Int,
+    val tarifaTransacaoCentavos: Int,
     val prazoEntrega: String,
     val paymentMethodId: String
 )
@@ -95,6 +104,7 @@ data class CreateCardPaymentIntentRequest(
     val produtoTitulo: String,
     val loja: String,
     val valorTotalCentavos: Int,
+    val tarifaTransacaoCentavos: Int,
     val prazoEntrega: String
 )
 
@@ -103,14 +113,51 @@ data class CreateCardPaymentIntentResponse(
     val paymentIntentClientSecret: String = "",
     val customerId: String = "",
     val ephemeralKeySecret: String = "",
-    val publishableKey: String = ""
+    val publishableKey: String = "",
+    val valorTotalCentavos: Int = 0,
+    val tarifaTransacaoCentavos: Int = 0,
+    val tarifaEntregaCentavos: Int = 0
 )
 
 data class CardPaymentResponse(
     val paymentIntentId: String = "",
-    val status: String = ""
+    val status: String = "",
+    val valorTotalCentavos: Int = 0,
+    val tarifaTransacaoCentavos: Int = 0,
+    val tarifaEntregaCentavos: Int = 0
 )
 
 data class OkResponse(
     val ok: Boolean = false
+)
+
+data class AdminContaDiagnosticoResponse(
+    val configurada: Boolean = false,
+    val comprimento: Int = 0
+)
+
+data class ContaRecebimentoPayload(
+    val tipoChavePix: String = "",
+    val chavePix: String = "",
+    val banco: String = "",
+    val agencia: String = "",
+    val conta: String = "",
+    val titular: String = "",
+    val documentoTitular: String = ""
+)
+
+data class AdminContaRecebimentoRequest(
+    val adminLogin: String,
+    val senhaAlteracao: String,
+    val contaRecebimento: ContaRecebimentoPayload
+)
+
+data class VerificarSenhaContaAdminRequest(
+    val adminLogin: String,
+    val senhaAlteracao: String
+)
+
+data class VerificarSenhaContaAdminResponse(
+    val ok: Boolean = false,
+    val autorizada: Boolean = false
 )

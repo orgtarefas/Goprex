@@ -11,6 +11,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.launch
 import java.util.UUID
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -21,6 +22,12 @@ import kotlin.math.roundToInt
 class PedidoRepository {
     private val firestore = FirebaseFirestore.getInstance()
     private val pedidos = firestore.collection("pedidos")
+    private val lojaRepository = LojaRepository()
+
+    companion object {
+        const val TARIFA_TRANSACAO_PADRAO = 1.0
+        const val TARIFA_ENTREGA_PADRAO = 10.0
+    }
 
     suspend fun criarPedido(
         item: ProdutoVitrine,
@@ -52,6 +59,9 @@ class PedidoRepository {
         val valorProduto = produto.precoPromocional
             ?.takeIf { produto.emPromocao && it > 0.0 }
             ?: produto.preco
+        val tarifaTransacao = TARIFA_TRANSACAO_PADRAO
+        val valorEntregador = TARIFA_ENTREGA_PADRAO.coerceAtMost(valorProduto)
+        val valorVendedor = (valorProduto - valorEntregador - tarifaTransacao).coerceAtLeast(0.0)
         val clienteLat = if (enderecoEntrega != null) 0.0 else clienteLatitudeAtual.takeIf { it != 0.0 } ?: cliente.getDouble("latitude")
         val clienteLng = if (enderecoEntrega != null) 0.0 else clienteLongitudeAtual.takeIf { it != 0.0 } ?: cliente.getDouble("longitude")
         val estimativa = estimarEntrega(
@@ -81,10 +91,14 @@ class PedidoRepository {
             produtoImagem = produto.imagens.firstOrNull().orEmpty(),
             categoria = produto.categoria,
             valorProduto = valorProduto,
+            valorVendedor = valorVendedor,
+            valorEntregador = valorEntregador,
             prazoEntrega = entrega.titulo,
             minutosPrometidos = entrega.minutos,
-            taxaEntrega = entrega.taxa,
-            valorTotal = valorProduto + entrega.taxa,
+            taxaEntrega = 0.0,
+            tarifaTransacao = tarifaTransacao,
+            valorAdmin = tarifaTransacao,
+            valorTotal = valorProduto,
             cidadeBase = "Salvador",
             estimativaMinutos = estimativa.first,
             distanciaEstimadaKm = estimativa.second
@@ -126,8 +140,8 @@ class PedidoRepository {
                 .whereEqualTo("status", StatusPedido.PRODUTO_LIBERADO_ENTREGA.name)
                 .get()
                 .await()
-
-            Result.success(snapshot.documents.mapNotNull { it.toObject(Pedido::class.java) }.sortedByDescending { it.criadoEm })
+            val pedidosAtivos = filtrarPedidosDeLojasAtivas(snapshot.documents.mapNotNull { it.toObject(Pedido::class.java) })
+            Result.success(pedidosAtivos.sortedByDescending { it.criadoEm })
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -148,11 +162,14 @@ class PedidoRepository {
                     return@addSnapshotListener
                 }
 
-                val lista = snapshot?.documents
-                    ?.mapNotNull { it.toObject(Pedido::class.java) }
-                    ?.sortedByDescending { it.criadoEm }
-                    .orEmpty()
-                trySend(lista)
+                launch {
+                    val lista = snapshot?.documents
+                        ?.mapNotNull { it.toObject(Pedido::class.java) }
+                        .orEmpty()
+                    val filtrada = filtrarPedidosDeLojasAtivas(lista)
+                        .sortedByDescending { it.criadoEm }
+                    trySend(filtrada)
+                }
             }
 
         awaitClose { registration.remove() }
@@ -183,6 +200,13 @@ class PedidoRepository {
     }
 
     suspend fun aceitarPedido(pedidoId: String, entregador: Login): Result<Unit> {
+        val pedidoSnapshot = pedidos.document(pedidoId).get().await()
+        val pedidoAtual = pedidoSnapshot.toObject(Pedido::class.java)
+            ?: return Result.failure(Exception("Pedido nao encontrado"))
+        if (!lojaEstaAtiva(pedidoAtual.loja)) {
+            return Result.failure(Exception("Loja desativada. Nao e possivel aceitar este pedido."))
+        }
+
         return atualizarPedido(
             pedidoId,
             mapOf(
@@ -272,6 +296,17 @@ class PedidoRepository {
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private suspend fun filtrarPedidosDeLojasAtivas(lista: List<Pedido>): List<Pedido> {
+        val lojas = lojaRepository.listarLojas(incluirInativas = true).getOrDefault(emptyList())
+        val chavesAtivas = lojas.filter { it.ativa }.flatMap { listOf(it.id, it.nome) }.toSet()
+        return lista.filter { pedido -> pedido.loja in chavesAtivas }
+    }
+
+    private suspend fun lojaEstaAtiva(lojaNomeOuId: String): Boolean {
+        val loja = lojaRepository.buscarLoja(lojaNomeOuId).getOrNull()
+        return loja?.ativa == true
     }
 
     private fun estimarEntrega(

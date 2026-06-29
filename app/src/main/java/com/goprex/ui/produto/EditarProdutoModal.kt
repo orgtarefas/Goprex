@@ -33,6 +33,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.goprex.data.model.Login
 import com.goprex.data.model.Produto
 import com.goprex.data.repository.ImgBBRepository
+import com.goprex.data.repository.PedidoRepository
 import com.goprex.data.repository.ProdutoRepository
 import com.goprex.ui.theme.GoPrexDark
 import com.goprex.ui.theme.GoPrexOrange
@@ -81,6 +82,7 @@ fun EditarProdutoModal(
     fun salvarEdicao() {
         if (titulo.isBlank()) { error = "Título é obrigatório"; return }
         if (preco.isBlank() || preco.toDoubleOrNull() == null || preco.toDouble() <= 0) { error = "Preço inválido"; return }
+        if (preco.toDouble() < PedidoRepository.TARIFA_ENTREGA_PADRAO + PedidoRepository.TARIFA_TRANSACAO_PADRAO) { error = "Preco final deve cobrir entrega e tarifa do Admin"; return }
         if (categoria.isBlank()) { error = "Selecione uma categoria"; return }
 
         scope.launch {
@@ -158,6 +160,7 @@ fun EditarProdutoModal(
                             modifier = Modifier.weight(1f)
                         )
                     }
+
 
                     // Imagens existentes
                     val imagensAtivas = produto.imagens.filter { it !in imagensRemovidas }

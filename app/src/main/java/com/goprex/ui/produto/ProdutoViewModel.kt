@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.goprex.data.model.Produto
 import com.goprex.data.repository.ImgBBRepository
+import com.goprex.data.repository.PedidoRepository
 import com.goprex.data.repository.ProdutoRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -192,6 +193,10 @@ class ProdutoViewModel : ViewModel() {
         if (state.descricao.isBlank()) erros["descricao"] = "Descrição é obrigatória"
         if (state.preco.isBlank() || state.preco.toDoubleOrNull() == null || state.preco.toDouble() <= 0) {
             erros["preco"] = "Preço deve ser maior que zero"
+        }
+        val preco = state.preco.toDoubleOrNull() ?: 0.0
+        if (preco < PedidoRepository.TARIFA_ENTREGA_PADRAO + PedidoRepository.TARIFA_TRANSACAO_PADRAO) {
+            erros["preco"] = "Preco final deve cobrir entrega e tarifa do Admin"
         }
         if (state.categoria.isBlank()) erros["categoria"] = "Selecione uma categoria"
         if (state.imagensUris.isEmpty()) erros["imagens"] = "Adicione pelo menos uma imagem"

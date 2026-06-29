@@ -9,6 +9,7 @@ import kotlinx.coroutines.tasks.await
 class AuthRepository {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val lojaRepository = LojaRepository()
 
     private fun createFirebaseEmail(login: String): String {
         return "${login}@goprex.com.br"
@@ -38,6 +39,19 @@ class AuthRepository {
                     return Result.failure(Exception("Usuário desativado. Contate o administrador."))
                 }
 
+                if (isVendedor(loginData)) {
+                    val lojaVinculada = loginData.getString("lojaId").ifBlank { loginData.getString("loja") }
+                    val loja = lojaRepository.buscarLoja(lojaVinculada).getOrNull()
+                    if (loja == null) {
+                        auth.signOut()
+                        return Result.failure(Exception("Loja vinculada ao vendedor nao encontrada. Contate o administrador."))
+                    }
+                    if (!loja.ativa) {
+                        auth.signOut()
+                        return Result.failure(Exception("Loja vinculada ao vendedor esta inativa. Contate o administrador."))
+                    }
+                }
+
                 Log.d("AuthRepository", "Login autorizado: ${loginData.getString("nome")}")
                 Result.success(loginData)
             } else {
@@ -64,6 +78,12 @@ class AuthRepository {
             Log.e("AuthRepository", "Erro ao buscar login: ${e.message}")
             null
         }
+    }
+
+    private fun isVendedor(loginData: Login): Boolean {
+        val perfil = loginData.getString("perfil").lowercase()
+        val descricaoPerfil = loginData.getString("descricaoPerfil").lowercase()
+        return "$perfil $descricaoPerfil".contains("vendedor")
     }
 
     suspend fun getLoginDataByUid(uid: String): Result<Login> {

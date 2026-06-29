@@ -706,7 +706,7 @@ private fun ConfirmarCompraDialog(
     val valorProduto = produto.precoPromocional
         ?.takeIf { produto.emPromocao && it > 0.0 }
         ?: produto.preco
-    val total = valorProduto + entrega.taxa
+    val total = valorProduto
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -717,8 +717,7 @@ private fun ConfirmarCompraDialog(
                 Text(produto.titulo, fontWeight = FontWeight.Bold, color = GoPrexDark)
                 Text("Loja: ${item.nomeLoja}", color = Color.Gray, fontSize = 13.sp)
                 Text("Entrega: ${entrega.titulo} (${entrega.descricao})", color = SuccessGreen, fontWeight = FontWeight.Bold)
-                Text("Produto: ${numberFormat.format(valorProduto)}")
-                Text("Taxa: ${numberFormat.format(entrega.taxa)}")
+                Text("Entrega gratis com tarifas inclusas no produto.", fontSize = 12.sp, color = Color.Gray)
                 Text("Total: ${numberFormat.format(total)}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = GoPrexOrange)
                 EnderecosEntregaSection(
                     enderecos = enderecos,
@@ -976,7 +975,7 @@ private fun PixPagamentoDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(pedido.produtoTitulo, fontWeight = FontWeight.Bold, color = GoPrexDark)
-                Text("Total: ${numberFormat.format(pedido.valorTotal)}", color = GoPrexOrange, fontWeight = FontWeight.Bold)
+                Text("Total com tarifas inclusas: ${numberFormat.format(pedido.valorTotal)}", color = GoPrexOrange, fontWeight = FontWeight.Bold)
                 Text("Este Pix expira em $minutos minutos. Pague no app do seu banco usando o QR Code ou copia e cola.", fontSize = 12.sp, color = Color.Gray)
 
                 if (pixPayment.pixQrCodeUrl.isNotBlank()) {
@@ -1056,7 +1055,7 @@ private fun CompraCriadaDialog(
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(pedido.produtoTitulo, fontWeight = FontWeight.Bold)
                 Text("Prazo: ${pedido.prazoEntrega}")
-                Text("Total: ${numberFormat.format(pedido.valorTotal)}", color = GoPrexOrange, fontWeight = FontWeight.Bold)
+                Text("Total com tarifas inclusas: ${numberFormat.format(pedido.valorTotal)}", color = GoPrexOrange, fontWeight = FontWeight.Bold)
                 if (pagamentoRecusado) {
                     Text(errorMessage ?: "O pagamento foi recusado. Confira o cartao ou tente outra forma de pagamento.", color = Color.Red, fontSize = 12.sp)
                 } else {

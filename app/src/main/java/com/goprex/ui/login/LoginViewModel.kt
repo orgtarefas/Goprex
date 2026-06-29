@@ -74,6 +74,9 @@ class LoginViewModel : ViewModel() {
                         Log.e("LoginViewModel", "Erro no login", exception)
 
                         val errorMessage = when {
+                            exception.message?.contains("Loja vinculada", ignoreCase = true) == true ->
+                                exception.message!!
+
                             exception.message?.contains("desativado", ignoreCase = true) == true ||
                                     exception.message?.contains("inativo", ignoreCase = true) == true ->
                                 "Usuário desativado. Contate o administrador."

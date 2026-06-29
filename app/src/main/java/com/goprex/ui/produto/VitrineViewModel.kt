@@ -263,6 +263,7 @@ class VitrineViewModel : ViewModel() {
             produtoTitulo = pedido.produtoTitulo,
             loja = pedido.loja,
             valorTotalCentavos = valorTotalCentavos,
+            tarifaTransacaoCentavos = (pedido.tarifaTransacao * 100).toInt(),
             prazoEntrega = pedido.prazoEntrega,
             formaPagamento = formaPagamento.codigo
         )
@@ -284,7 +285,11 @@ class VitrineViewModel : ViewModel() {
                     )
                     _uiState.value = _uiState.value.copy(
                         comprando = false,
-                        compraCriada = pedido.copy(
+                        compraCriada = pedido.comValoresDoBackend(
+                            valorTotalCentavos = response.valorTotalCentavos,
+                            tarifaTransacaoCentavos = response.tarifaTransacaoCentavos,
+                            tarifaEntregaCentavos = response.tarifaEntregaCentavos
+                        ).copy(
                             stripeCheckoutSessionId = response.checkoutSessionId,
                             checkoutUrl = response.checkoutUrl
                         ),
@@ -321,6 +326,7 @@ class VitrineViewModel : ViewModel() {
             produtoTitulo = pedido.produtoTitulo,
             loja = pedido.loja,
             valorTotalCentavos = valorTotalCentavos,
+            tarifaTransacaoCentavos = (pedido.tarifaTransacao * 100).toInt(),
             prazoEntrega = pedido.prazoEntrega
         )
 
@@ -339,7 +345,13 @@ class VitrineViewModel : ViewModel() {
                         cardPaymentPublishableKey = response.publishableKey,
                         cardPaymentCustomerId = response.customerId,
                         cardPaymentEphemeralKeySecret = response.ephemeralKeySecret,
-                        cardPaymentPedido = pedido.copy(stripePaymentIntentId = response.paymentIntentId)
+                        cardPaymentPedido = pedido.comValoresDoBackend(
+                            valorTotalCentavos = response.valorTotalCentavos,
+                            tarifaTransacaoCentavos = response.tarifaTransacaoCentavos,
+                            tarifaEntregaCentavos = response.tarifaEntregaCentavos
+                        ).copy(
+                            stripePaymentIntentId = response.paymentIntentId
+                        )
                     )
                 }
             },
@@ -417,6 +429,7 @@ class VitrineViewModel : ViewModel() {
             produtoTitulo = pedido.produtoTitulo,
             loja = pedido.loja,
             valorTotalCentavos = (pedido.valorTotal * 100).toInt(),
+            tarifaTransacaoCentavos = (pedido.tarifaTransacao * 100).toInt(),
             prazoEntrega = pedido.prazoEntrega
         )
 
@@ -436,7 +449,11 @@ class VitrineViewModel : ViewModel() {
                     )
                     _uiState.value = _uiState.value.copy(
                         comprando = false,
-                        compraCriada = pedido.copy(
+                        compraCriada = pedido.comValoresDoBackend(
+                            valorTotalCentavos = response.valorTotalCentavos,
+                            tarifaTransacaoCentavos = response.tarifaTransacaoCentavos,
+                            tarifaEntregaCentavos = response.tarifaEntregaCentavos
+                        ).copy(
                             stripePaymentIntentId = response.paymentIntentId
                         ),
                         pixPayment = response
@@ -464,6 +481,7 @@ class VitrineViewModel : ViewModel() {
             produtoTitulo = pedido.produtoTitulo,
             loja = pedido.loja,
             valorTotalCentavos = (pedido.valorTotal * 100).toInt(),
+            tarifaTransacaoCentavos = (pedido.tarifaTransacao * 100).toInt(),
             prazoEntrega = pedido.prazoEntrega,
             paymentMethodId = paymentMethodId
         )
@@ -471,7 +489,11 @@ class VitrineViewModel : ViewModel() {
         stripeRepository.pagarComCartao(request).fold(
             onSuccess = { response ->
                 if (response.status == "succeeded") {
-                    val pedidoPago = pedido.copy(
+                    val pedidoPago = pedido.comValoresDoBackend(
+                        valorTotalCentavos = response.valorTotalCentavos,
+                        tarifaTransacaoCentavos = response.tarifaTransacaoCentavos,
+                        tarifaEntregaCentavos = response.tarifaEntregaCentavos
+                    ).copy(
                         status = StatusPedido.PRODUTO_EM_PREPARACAO.name,
                         pagamentoStatus = "PAGO",
                         stripePaymentIntentId = response.paymentIntentId,
@@ -536,5 +558,21 @@ class VitrineViewModel : ViewModel() {
 
     fun limparCheckoutUrl() {
         _uiState.value = _uiState.value.copy(checkoutUrl = null)
+    }
+
+    private fun Pedido.comValoresDoBackend(
+        valorTotalCentavos: Int,
+        tarifaTransacaoCentavos: Int,
+        tarifaEntregaCentavos: Int
+    ): Pedido {
+        val tarifa = tarifaTransacaoCentavos.takeIf { it > 0 }?.let { it / 100.0 } ?: tarifaTransacao
+        val entrega = tarifaEntregaCentavos.takeIf { it > 0 }?.let { it / 100.0 } ?: valorEntregador
+        return copy(
+            valorTotal = valorTotalCentavos.takeIf { it > 0 }?.let { it / 100.0 } ?: valorTotal,
+            tarifaTransacao = tarifa,
+            valorAdmin = tarifa,
+            valorEntregador = entrega,
+            valorVendedor = (valorProduto - entrega - tarifa).coerceAtLeast(0.0)
+        )
     }
 }

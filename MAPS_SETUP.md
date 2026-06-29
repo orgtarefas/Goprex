@@ -10,15 +10,17 @@ O app ja possui:
 
 Para o mapa in-app renderizar, configure uma chave da Google Maps Platform.
 
-## Gradle local
+## Onde configurar
 
-No arquivo `gradle.properties` local da maquina ou nas variaveis do CI, adicione:
+No arquivo `local.properties` do projeto Android, adicione:
 
 ```text
 GOOGLE_MAPS_API_KEY=sua_chave_google_maps
 ```
 
 Nao publique essa chave em repositorio publico.
+
+O projeto Android ja le essa chave em `app/build.gradle.kts` e injeta no `AndroidManifest.xml`.
 
 ## APIs necessarias
 
